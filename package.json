@@ -9,14 +9,22 @@
     "react-native": "0.88.1"
   },
   "devDependencies": {
+    "@types/node": "22.20.5",
     "@types/react": "~19.3.0",
+    "supabase": "3.0.0",
+    "tsx": "4.23.15",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "test:db": "supabase test db supabase/tests/database",
+    "typecheck:api": "tsc -p supabase/tests/api",
+    "test:api": "node --env-file-if-exists=.env --import tsx --test supabase/tests/api/auth.test.ts supabase/tests/api/sincronizacao.test.ts"
   },
   "private": true
 }
