@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { setTimeout } from 'node:timers/promises';
-import type { ErroApi, Sessao } from './types.ts';
+import type {
+  DadosConta,
+  Entidade,
+  ErroApi,
+  Operacao,
+  RespostaSincronizacao,
+  Sessao,
+} from './types.ts';
 
 type OpcoesRequisicao = {
   metodo?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -86,6 +93,24 @@ export async function abrirLink(link: string) {
   const destino = resposta.headers.get('location');
   assert.ok(destino, 'redirecionamento não informado');
   return new URL(destino);
+}
+
+export function sincronizar<E extends Entidade>(
+  token: string,
+  operacao: Operacao<E>,
+): Promise<RespostaSincronizacao<E>>;
+export function sincronizar(token: string, operacao: Operacao, status: number): Promise<ErroApi>;
+export function sincronizar(token: string, operacao: Operacao, status = 200) {
+  return requisitar('/rest/v1/rpc/sincronizar_operacao', {
+    metodo: 'POST',
+    token,
+    dados: operacao,
+    status,
+  });
+}
+
+export function baixar(token: string) {
+  return requisitar<DadosConta>('/rest/v1/rpc/baixar_dados', { metodo: 'POST', token, dados: {} });
 }
 
 export function entrar(email: string, password: string): Promise<Sessao>;
