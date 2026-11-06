@@ -24,7 +24,7 @@
     "supabase:stop": "supabase stop",
     "test:db": "supabase test db supabase/tests/database",
     "typecheck:api": "tsc -p supabase/tests/api",
-    "test:api": "node --env-file-if-exists=.env --import tsx --test supabase/tests/api/auth.test.ts"
+    "test:api": "node --env-file-if-exists=.env --import tsx --test supabase/tests/api/auth.test.ts supabase/tests/api/sincronizacao.test.ts"
   },
   "private": true
 }
