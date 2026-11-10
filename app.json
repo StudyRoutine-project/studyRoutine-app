@@ -10,6 +10,14 @@
     },
     "android": {
       "predictiveBackGestureEnabled": false
-    }
+    },
+    "plugins": [
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ]
+    ]
   }
 }

@@ -1,20 +1,49 @@
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+
+import { RootNavigator } from './src/navigation/RootNavigator';
+import { supabase } from './src/services/supabase';
+import { cores } from './src/theme/cores';
+
+const temaNavegacao = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: cores.fundo,
+  },
+};
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
+      {supabase ? (
+        <NavigationContainer theme={temaNavegacao}>
+          <RootNavigator client={supabase} />
+        </NavigationContainer>
+      ) : (
+        <SafeAreaView style={styles.aviso}>
+          <Text style={styles.texto}>
+            Não foi possível abrir o StudyRoutine.
+          </Text>
+        </SafeAreaView>
+      )}
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  aviso: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
     justifyContent: 'center',
+    padding: 28,
+    backgroundColor: cores.fundo,
+  },
+  texto: {
+    color: cores.texto,
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
