@@ -1,7 +1,9 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { useConfirmacaoEmail } from '../hooks/useConfirmacaoEmail';
 import { useSessao } from '../hooks/useSessao';
+import { CadastroScreen } from '../screens/CadastroScreen';
 import { InicioScreen } from '../screens/InicioScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { cores } from '../theme/cores';
@@ -10,6 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 type Rotas = {
   Login: undefined;
+  Cadastro: { somenteReenvio: boolean } | undefined;
   Inicio: undefined;
 };
 
@@ -17,6 +20,7 @@ const Stack = createNativeStackNavigator<Rotas>();
 
 export function RootNavigator({ client }: { client: SupabaseClient }) {
   const usuario = useSessao(client);
+  const { aviso, chaveConta, limparAviso } = useConfirmacaoEmail(client, Boolean(usuario));
 
   if (usuario === undefined) {
     return (
@@ -33,9 +37,34 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
           {() => <InicioScreen client={client} usuario={usuario} />}
         </Stack.Screen>
       ) : (
-        <Stack.Screen name="Login">
-          {() => <LoginScreen client={client} />}
-        </Stack.Screen>
+        <Stack.Group navigationKey={`conta-${chaveConta}`}>
+          <Stack.Screen name="Login">
+            {({ navigation }) => (
+              <LoginScreen
+                client={client}
+                aviso={aviso}
+                fecharAviso={limparAviso}
+                abrirCadastro={() => {
+                  limparAviso();
+                  navigation.navigate('Cadastro');
+                }}
+                pedirNovoLink={() => {
+                  limparAviso();
+                  navigation.navigate('Cadastro', { somenteReenvio: true });
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Cadastro">
+            {({ navigation, route }) => (
+              <CadastroScreen
+                client={client}
+                somenteReenvio={route.params?.somenteReenvio ?? false}
+                voltar={() => navigation.goBack()}
+              />
+            )}
+          </Stack.Screen>
+        </Stack.Group>
       )}
     </Stack.Navigator>
   );

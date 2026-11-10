@@ -3,6 +3,8 @@ import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 
+import { configurarPkce } from './pkce';
+
 import type { Session } from '@supabase/supabase-js';
 
 function lerConfiguracao() {
@@ -23,6 +25,7 @@ function lerConfiguracao() {
 }
 
 const configuracao = lerConfiguracao();
+if (configuracao) configurarPkce();
 
 const storage = {
   getItem: SecureStore.getItemAsync,
@@ -38,6 +41,7 @@ export const supabase = configuracao
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
+        flowType: 'pkce',
       },
     })
   : null;

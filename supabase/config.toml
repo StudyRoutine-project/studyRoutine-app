@@ -17,7 +17,11 @@ enabled = false
 [auth]
 enabled = true
 site_url = "studyroutine://auth/confirmar"
-additional_redirect_urls = ["studyroutine://auth/confirmar", "studyroutine://auth/nova-senha"]
+additional_redirect_urls = [
+  "studyroutine://auth/confirmar",
+  "studyroutine://auth/nova-senha",
+  "http://localhost:*/auth/confirmar",
+]
 minimum_password_length = 8
 enable_anonymous_sign_ins = false
 
@@ -26,9 +30,15 @@ enabled = true
 enable_confirmations = true
 max_frequency = "1s"
 
+[auth.email.template.confirmation]
+subject = "Confirme seu e-mail no StudyRoutine"
+content_path = "./supabase/templates/confirmation.html"
+
 [local_smtp]
 enabled = true
 port = 54324
+admin_email = "conta@studyroutine.com"
+sender_name = "StudyRoutine"
 
 [studio]
 enabled = false

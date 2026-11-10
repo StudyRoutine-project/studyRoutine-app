@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MensagemErro } from '../components/MensagemErro';
 import { cores } from '../theme/cores';
 
 import type { SupabaseClient, User } from '@supabase/supabase-js';
@@ -42,7 +43,7 @@ export function InicioScreen({ client, usuario }: Props) {
         <Pressable accessibilityRole="button" disabled={saindo} onPress={sair} style={styles.botao}>
           <Text style={styles.textoBotao}>{saindo ? 'Saindo…' : 'Sair da conta'}</Text>
         </Pressable>
-        {erro && <Text accessibilityRole="alert" style={styles.erro}>Não foi possível sair. Tente de novo.</Text>}
+        {erro && <MensagemErro mensagem="Não foi possível sair. Tente de novo." />}
       </View>
     </SafeAreaView>
   );
@@ -75,9 +76,5 @@ const styles = StyleSheet.create({
     color: cores.roxo,
     fontSize: 16,
     fontWeight: '600',
-  },
-  erro: {
-    color: cores.erro,
-    fontSize: 14,
   },
 });

@@ -1,52 +1,52 @@
 import Feather from '@expo/vector-icons/Feather';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRef, useState } from 'react';
-import {
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { entrar } from '../services/autenticacao';
+import { MensagemErro } from '../components/MensagemErro';
+import { BotaoConta } from '../components/conta/BotaoConta';
+import { CampoConta } from '../components/conta/CampoConta';
+import { ContaLayout } from '../components/conta/ContaLayout';
+import { LinkConta } from '../components/conta/LinkConta';
+import { emailValido, entrar } from '../services/autenticacao';
 import { cores } from '../theme/cores';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ComponentRef } from 'react';
+import type { ResultadoConfirmacao } from '../services/autenticacao';
 
-const logo = require('../../assets/logo.png');
-const ilustracao = require('../../assets/ilustracao.png');
+type Props = {
+  client: SupabaseClient;
+  aviso: ResultadoConfirmacao | null;
+  fecharAviso: () => void;
+  abrirCadastro: () => void;
+  pedirNovoLink: () => void;
+};
 
-type Campo = 'email' | 'senha';
+const mensagens = {
+  entrar: 'Entre com o e-mail e a senha que você cadastrou.',
+  invalido: 'Este link de confirmação é inválido ou expirou.',
+  indisponivel: 'Não foi possível abrir o link. Confira a conexão e tente de novo.',
+};
 
-export function LoginScreen({ client }: { client: SupabaseClient }) {
+export function LoginScreen({ client, aviso, fecharAviso, abrirCadastro, pedirNovoLink }: Props) {
   const campoSenha = useRef<ComponentRef<typeof TextInput>>(null);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [campoFocado, setCampoFocado] = useState<Campo | null>(null);
-  const [campoSobCursor, setCampoSobCursor] = useState<Campo | null>(null);
-  const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [validar, setValidar] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const erroEmail = validar && !emailValido;
-  const erroSenha = validar && !senha;
+  const erroEmail = validar && !emailValido(email) ? 'Digite um e-mail válido.' : undefined;
+  const erroSenha = validar && !senha ? 'Digite sua senha.' : undefined;
+  const mensagem = aviso && aviso !== 'confirmado' ? mensagens[aviso] : null;
+  const avisoDeErro = aviso === 'invalido' || aviso === 'indisponivel';
 
   async function enviar() {
     if (enviando) return;
 
     setValidar(true);
     setErro(null);
-    if (!emailValido || !senha) return;
+    if (!emailValido(email) || !senha) return;
 
     Keyboard.dismiss();
     setEnviando(true);
@@ -55,301 +55,124 @@ export function LoginScreen({ client }: { client: SupabaseClient }) {
   }
 
   return (
-    <SafeAreaView style={styles.tela}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.tela}
-      >
-        <ScrollView contentContainerStyle={styles.conteudo} keyboardShouldPersistTaps="handled">
-          <View style={styles.coluna}>
-            <Image
-              accessible
-              accessibilityLabel="StudyRoutine"
-              resizeMode="contain"
-              source={logo}
-              style={styles.logo}
-            />
-            <Image
+    <ContaLayout
+      titulo="Bem-vindo de volta"
+      subtitulo="Organize seus estudos em um só lugar."
+    >
+      {mensagem && (
+        <View style={[styles.aviso, avisoDeErro && styles.avisoDeErro]}>
+          <View style={styles.linhaAviso}>
+            <Feather
               accessible={false}
-              resizeMode="contain"
-              source={ilustracao}
-              style={styles.ilustracao}
+              aria-hidden
+              color={avisoDeErro ? cores.erro : cores.roxo}
+              name={avisoDeErro ? 'alert-circle' : 'info'}
+              size={20}
             />
-
-            <View style={styles.apresentacao}>
-              <Text accessibilityRole="header" style={styles.titulo}>
-                Bem-vindo de volta
-              </Text>
-              <Text style={styles.subtitulo}>Organize seus estudos em um só lugar.</Text>
-            </View>
-
-            <View style={styles.formulario}>
-              <View style={styles.campo}>
-                <Text style={styles.rotulo}>E-mail</Text>
-                <View
-                  onPointerEnter={(event) => {
-                    if (event.nativeEvent.pointerType === 'mouse') setCampoSobCursor('email');
-                  }}
-                  onPointerLeave={() => setCampoSobCursor(null)}
-                  style={[
-                    styles.contorno,
-                    campoSobCursor === 'email' && styles.contornoHover,
-                    campoFocado === 'email' && styles.contornoFocado,
-                    erroEmail && styles.contornoErro,
-                  ]}
-                >
-                  <Feather accessible={false} aria-hidden color={cores.secundario} name="mail" size={19} />
-                  <TextInput
-                    accessibilityLabel="E-mail"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    autoCorrect={false}
-                    editable={!enviando}
-                    keyboardType="email-address"
-                    onBlur={() => setCampoFocado(null)}
-                    onChangeText={(valor) => {
-                      setEmail(valor);
-                      setErro(null);
-                    }}
-                    onFocus={() => setCampoFocado('email')}
-                    onSubmitEditing={() => campoSenha.current?.focus()}
-                    placeholder="Digite seu e-mail"
-                    placeholderTextColor={cores.secundario}
-                    returnKeyType="next"
-                    style={styles.entrada}
-                    submitBehavior="submit"
-                    value={email}
-                  />
-                </View>
-                {erroEmail && (
-                  <Text accessibilityLiveRegion="polite" style={styles.erro}>
-                    Digite um e-mail válido.
-                  </Text>
-                )}
-              </View>
-
-              <View style={styles.campo}>
-                <Text style={styles.rotulo}>Senha</Text>
-                <View
-                  onPointerEnter={(event) => {
-                    if (event.nativeEvent.pointerType === 'mouse') setCampoSobCursor('senha');
-                  }}
-                  onPointerLeave={() => setCampoSobCursor(null)}
-                  style={[
-                    styles.contorno,
-                    campoSobCursor === 'senha' && styles.contornoHover,
-                    campoFocado === 'senha' && styles.contornoFocado,
-                    erroSenha && styles.contornoErro,
-                  ]}
-                >
-                  <Feather accessible={false} aria-hidden color={cores.secundario} name="lock" size={19} />
-                  <TextInput
-                    ref={campoSenha}
-                    accessibilityLabel="Senha"
-                    autoCapitalize="none"
-                    autoComplete="current-password"
-                    placeholder="Digite sua senha"
-                    placeholderTextColor={cores.secundario}
-                    autoCorrect={false}
-                    editable={!enviando}
-                    onBlur={() => setCampoFocado(null)}
-                    onChangeText={(valor) => {
-                      setSenha(valor);
-                      setErro(null);
-                    }}
-                    onFocus={() => setCampoFocado('senha')}
-                    onSubmitEditing={enviar}
-                    returnKeyType="go"
-                    secureTextEntry={!senhaVisivel}
-                    style={styles.entrada}
-                    value={senha}
-                  />
-                  <Pressable
-                    accessibilityLabel={senhaVisivel ? 'Ocultar senha' : 'Mostrar senha'}
-                    accessibilityRole="button"
-                    onPress={() => setSenhaVisivel((visivel) => !visivel)}
-                    style={styles.visibilidade}
-                  >
-                    <Feather
-                      accessible={false}
-                      aria-hidden
-                      color={cores.secundario}
-                      name={senhaVisivel ? 'eye' : 'eye-off'}
-                      size={20}
-                    />
-                  </Pressable>
-                </View>
-                {erroSenha && (
-                  <Text accessibilityLiveRegion="polite" style={styles.erro}>
-                    Digite sua senha.
-                  </Text>
-                )}
-              </View>
-
-              {erro && (
-                <Text accessibilityRole="alert" style={styles.erro}>
-                  {erro}
-                </Text>
-              )}
-
-              <Pressable
-                accessibilityLabel={enviando ? 'Entrando…' : 'Entrar'}
-                accessibilityRole="button"
-                accessibilityState={{ busy: enviando, disabled: enviando }}
-                disabled={enviando}
-                onPress={enviar}
-                style={({ pressed }) => [
-                  styles.botao,
-                  (pressed || enviando) && styles.botaoPressionado,
-                ]}
-              >
-                <LinearGradient
-                  colors={['#6849EB', cores.roxo, '#2E1B88']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gradiente}
-                >
-                  <Text style={styles.textoBotao}>{enviando ? 'Entrando…' : 'Entrar'}</Text>
-                  <Feather
-                    accessible={false}
-                    aria-hidden
-                    color={cores.branco}
-                    name="arrow-right"
-                    size={21}
-                    style={styles.setaBotao}
-                  />
-                </LinearGradient>
-              </Pressable>
-            </View>
+            <Text accessibilityRole="alert" style={styles.mensagem}>
+              {mensagem}
+            </Text>
+            <Pressable
+              accessibilityLabel="Fechar aviso"
+              accessibilityRole="button"
+              onPress={fecharAviso}
+              style={({ pressed }) => [styles.fecharAviso, pressed && styles.fecharAvisoPressionado]}
+            >
+              <Feather accessible={false} aria-hidden color={cores.texto} name="x" size={18} />
+            </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          {aviso === 'invalido' && (
+            <LinkConta texto="Pedir novo link" onPress={pedirNovoLink} />
+          )}
+        </View>
+      )}
+
+      <CampoConta
+        rotulo="E-mail"
+        icone="mail"
+        erro={erroEmail}
+        autoCapitalize="none"
+        autoComplete="email"
+        autoCorrect={false}
+        editable={!enviando}
+        keyboardType="email-address"
+        onChangeText={(valor) => {
+          setEmail(valor);
+          setErro(null);
+        }}
+        onSubmitEditing={() => campoSenha.current?.focus()}
+        placeholder="Digite seu e-mail"
+        returnKeyType="next"
+        submitBehavior="submit"
+        value={email}
+      />
+
+      <CampoConta
+        ref={campoSenha}
+        rotulo="Senha"
+        icone="lock"
+        senha
+        erro={erroSenha}
+        autoCapitalize="none"
+        autoComplete="current-password"
+        autoCorrect={false}
+        editable={!enviando}
+        onChangeText={(valor) => {
+          setSenha(valor);
+          setErro(null);
+        }}
+        onSubmitEditing={enviar}
+        placeholder="Digite sua senha"
+        returnKeyType="go"
+        value={senha}
+      />
+
+      {erro && <MensagemErro mensagem={erro} />}
+
+      <BotaoConta texto={enviando ? 'Entrando…' : 'Entrar'} ocupado={enviando} onPress={enviar} />
+      <LinkConta
+        pergunta="Ainda não tem conta?"
+        texto="Criar conta"
+        desativado={enviando}
+        onPress={abrirCadastro}
+      />
+    </ContaLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  tela: {
-    flex: 1,
-    backgroundColor: cores.branco,
-  },
-  conteudo: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 36,
-  },
-  coluna: {
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 392,
-  },
-  logo: {
-    width: '72%',
-    maxWidth: 264,
-    height: 'auto',
-    aspectRatio: 590 / 106,
-  },
-  ilustracao: {
-    alignSelf: 'center',
-    width: '94%',
-    maxWidth: 344,
-    height: 'auto',
-    aspectRatio: 784 / 504,
-    marginTop: 28,
-    marginBottom: 16,
-  },
-  apresentacao: {
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 26,
-  },
-  titulo: {
-    color: cores.texto,
-    fontSize: 30,
-    fontWeight: '700',
-    letterSpacing: -0.7,
-    textAlign: 'center',
-  },
-  subtitulo: {
-    color: cores.secundario,
-    fontSize: 15,
-    lineHeight: 21,
-    textAlign: 'center',
-  },
-  formulario: {
-    gap: 15,
-  },
-  campo: {
-    gap: 7,
-  },
-  rotulo: {
-    color: cores.texto,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  contorno: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: cores.branco,
-    borderColor: cores.borda,
+  aviso: {
+    backgroundColor: '#F2EEFF',
+    borderColor: '#DCD2FF',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingLeft: 15,
+    borderRadius: 14,
+    paddingLeft: 14,
+    paddingRight: 5,
+    paddingVertical: 5,
   },
-  contornoHover: {
-    borderColor: cores.secundario,
+  avisoDeErro: {
+    backgroundColor: '#FFF2F4',
+    borderColor: '#F2C8D2',
   },
-  contornoFocado: {
-    backgroundColor: cores.fundo,
-    borderColor: cores.roxo,
+  linhaAviso: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
   },
-  contornoErro: {
-    borderColor: cores.erro,
+  fecharAviso: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
-  entrada: {
+  fecharAvisoPressionado: {
+    backgroundColor: cores.branco,
+  },
+  mensagem: {
     flex: 1,
     color: cores.texto,
-    fontSize: 16,
-    minHeight: 54,
-    outlineStyle: 'solid',
-    outlineWidth: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  visibilidade: {
-    minWidth: 48,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  erro: {
-    color: cores.erro,
     fontSize: 14,
-  },
-  botao: {
-    borderRadius: 27,
-    overflow: 'hidden',
-    marginTop: 7,
-  },
-  botaoPressionado: {
-    opacity: 0.82,
-  },
-  gradiente: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 54,
-    paddingHorizontal: 52,
-    paddingVertical: 12,
-  },
-  textoBotao: {
-    color: cores.branco,
-    fontSize: 17,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  setaBotao: {
-    position: 'absolute',
-    right: 18,
+    lineHeight: 20,
   },
 });
