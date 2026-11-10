@@ -50,7 +50,7 @@
         line-height: 1.6;
       }
 
-      .botao {
+      .codigo {
         display: inline-block;
         padding: 14px 22px;
         background-color: #5135d9;
@@ -58,7 +58,7 @@
         color: #ffffff;
         font-size: 16px;
         font-weight: bold;
-        text-decoration: none;
+        letter-spacing: 4px;
       }
 
       .rodape {
@@ -79,9 +79,9 @@
                 <p class="marca">StudyRoutine</p>
                 <h1>Recuperar senha</h1>
                 <p class="mensagem">
-                  Você pediu para alterar sua senha. Use o botão abaixo para definir uma nova senha.
+                  Digite o código abaixo no StudyRoutine para escolher uma nova senha.
                 </p>
-                <a class="botao" href="{{ .ConfirmationURL }}">Recuperar senha</a>
+                <strong class="codigo">{{ .Token }}</strong>
                 <p class="rodape">
                   Se você não pediu esta alteração, pode ignorar este e-mail.
                 </p>

@@ -6,21 +6,18 @@ import { BotaoConta } from '../components/conta/BotaoConta';
 import { CampoConta } from '../components/conta/CampoConta';
 import { ContaLayout } from '../components/conta/ContaLayout';
 import { LinkConta } from '../components/conta/LinkConta';
-import { encerrarRecuperacao, minimoSenha, salvarNovaSenha } from '../services/autenticacao';
+import { encerrarSessaoTemporaria, minimoSenha, salvarNovaSenha } from '../services/autenticacao';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ComponentRef } from 'react';
-import type { ResultadoLinkConta } from '../services/autenticacao';
 
 type Props = {
   client: SupabaseClient;
-  estado: Exclude<ResultadoLinkConta, 'entrar'>;
   concluir: () => void;
-  voltar: () => void;
-  solicitarInstrucoes: () => void;
+  pedirNovoCodigo: () => void;
 };
 
-export function RecuperarSenhaScreen({ client, estado, concluir, voltar, solicitarInstrucoes }: Props) {
+export function RecuperarSenhaScreen({ client, concluir, pedirNovoCodigo }: Props) {
   const campoConfirmacao = useRef<ComponentRef<typeof TextInput>>(null);
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
@@ -55,32 +52,20 @@ export function RecuperarSenhaScreen({ client, estado, concluir, voltar, solicit
       setConfirmacao('');
     }
 
-    const falha = await encerrarRecuperacao(client);
+    const falha = await encerrarSessaoTemporaria(client);
     setEnviando(false);
     setErro(falha);
     if (!falha) concluir();
   }
 
-  if (estado !== 'confirmado') {
-    return (
-      <ContaLayout
-        titulo="Solicite novas instruções"
-        subtitulo={estado === 'invalido'
-          ? 'O acesso à recuperação expirou ou já foi usado. Solicite outro e-mail.'
-          : 'Confira sua conexão e solicite novas instruções para recuperar a senha.'}
-      >
-        <BotaoConta texto="Enviar instruções" onPress={solicitarInstrucoes} />
-        <LinkConta texto="Voltar" onPress={voltar} />
-      </ContaLayout>
-    );
-  }
-
   return (
     <ContaLayout
       titulo="Recuperar senha"
-      subtitulo={senhaSalva
-        ? 'Sua senha foi alterada. Entre novamente.'
-        : 'Escolha uma nova senha para sua conta.'}
+      subtitulo={
+        senhaSalva
+          ? 'Sua senha foi alterada. Entre novamente.'
+          : 'Escolha uma nova senha para sua conta.'
+      }
       compacto
     >
       {!senhaSalva && (
@@ -137,9 +122,9 @@ export function RecuperarSenhaScreen({ client, estado, concluir, voltar, solicit
       {!senhaSalva && (
         <LinkConta
           pergunta="Precisa recomeçar?"
-          texto="Reenviar instruções"
+          texto="Pedir outro código"
           desativado={enviando}
-          onPress={solicitarInstrucoes}
+          onPress={pedirNovoCodigo}
         />
       )}
     </ContaLayout>

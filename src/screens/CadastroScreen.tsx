@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Keyboard, TextInput } from 'react-native';
 
 import { MensagemErro } from '../components/MensagemErro';
@@ -13,39 +13,29 @@ import type { ComponentRef } from 'react';
 
 type Props = {
   client: SupabaseClient;
-  somenteReenvio: boolean;
+  reenviarPara?: string;
+  verificarCodigo: (email: string) => void;
   voltar: () => void;
 };
 
-export function CadastroScreen({ client, somenteReenvio, voltar }: Props) {
-
+export function CadastroScreen({ client, reenviarPara, verificarCodigo, voltar }: Props) {
+  const somenteReenvio = reenviarPara !== undefined;
   const campoEmail = useRef<ComponentRef<typeof TextInput>>(null);
   const campoSenha = useRef<ComponentRef<typeof TextInput>>(null);
   const campoConfirmacao = useRef<ComponentRef<typeof TextInput>>(null);
   const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(reenviarPara ?? '');
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [validar, setValidar] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  const [enviado, setEnviado] = useState(false);
-  const [reenviado, setReenviado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const nomeValido = Boolean(nome.trim());
   const senhaValida = senha.length >= minimoSenha;
   const senhasIguais = Boolean(confirmacao) && senha === confirmacao;
   const titulo = somenteReenvio ? 'Reenviar confirmação' : 'Criar conta';
-  const subtitulo = somenteReenvio
-    ? 'Informe seu e-mail.'
-    : 'Comece a organizar seus estudos.';
-
-  useEffect(() => {
-    if (!reenviado) return;
-
-    const timer = setTimeout(() => setReenviado(false), 2500);
-    return () => clearTimeout(timer);
-  }, [reenviado]);
+  const subtitulo = somenteReenvio ? 'Informe seu e-mail.' : 'Comece a organizar seus estudos.';
 
   async function enviar() {
     if (enviando) return;
@@ -66,38 +56,8 @@ export function CadastroScreen({ client, somenteReenvio, voltar }: Props) {
     if (!falha) {
       setSenha('');
       setConfirmacao('');
-      setEnviado(true);
+      verificarCodigo(email.trim().toLowerCase());
     }
-  }
-
-  async function reenviar() {
-    if (enviando) return;
-
-    setEnviando(true);
-    setErro(null);
-    setReenviado(false);
-    const falha = await reenviarConfirmacao(client, email);
-    setEnviando(false);
-    setErro(falha);
-    setReenviado(!falha);
-  }
-
-  if (enviado) {
-    return (
-      <ContaLayout
-        titulo="Confira seu e-mail"
-        subtitulo={`Abra o e-mail enviado para ${email.trim().toLowerCase()} e confirme sua conta.`}
-      >
-        {erro && <MensagemErro mensagem={erro} />}
-        <BotaoConta
-          texto={enviando ? 'Reenviando…' : reenviado ? 'E-mail reenviado' : 'Reenviar e-mail'}
-          ocupado={enviando}
-          concluido={reenviado}
-          onPress={reenviar}
-        />
-        <LinkConta texto="Voltar ao login" onPress={voltar} />
-      </ContaLayout>
-    );
   }
 
   return (
@@ -190,13 +150,14 @@ export function CadastroScreen({ client, somenteReenvio, voltar }: Props) {
       {erro && <MensagemErro mensagem={erro} />}
 
       <BotaoConta
-        texto={enviando ? 'Enviando…' : somenteReenvio ? 'Enviar confirmação' : 'Criar conta'}
+        texto={enviando ? 'Enviando…' : somenteReenvio ? 'Enviar código' : 'Criar conta'}
         ocupado={enviando}
         onPress={enviar}
       />
       <LinkConta
         pergunta={somenteReenvio ? undefined : 'Já tem conta?'}
         texto={somenteReenvio ? 'Voltar ao login' : 'Entrar'}
+        desativado={enviando}
         onPress={voltar}
       />
     </ContaLayout>

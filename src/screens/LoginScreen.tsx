@@ -12,7 +12,7 @@ import { cores } from '../theme/cores';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ComponentRef } from 'react';
-import type { AvisoConta } from '../services/autenticacao';
+import type { AvisoConta, FalhaLogin } from '../services/autenticacao';
 
 type Props = {
   client: SupabaseClient;
@@ -20,14 +20,12 @@ type Props = {
   fecharAviso: () => void;
   abrirCadastro: () => void;
   recuperarSenha: () => void;
-  abrirReenvioConfirmacao: () => void;
+  abrirReenvioConfirmacao: (email: string) => void;
 };
 
 const mensagens = {
+  'email-confirmado': 'E-mail confirmado. Entre com sua senha.',
   'senha-alterada': 'Senha alterada. Entre com sua nova senha.',
-  entrar: 'Entre com o e-mail e a senha que você cadastrou.',
-  invalido: 'A confirmação é inválida ou expirou. Solicite outro e-mail.',
-  indisponivel: 'Não foi possível confirmar o e-mail. Confira a conexão e tente de novo.',
 };
 
 export function LoginScreen({
@@ -43,16 +41,16 @@ export function LoginScreen({
   const [senha, setSenha] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [validar, setValidar] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<FalhaLogin | null>(null);
 
   const erroEmail = validar && !emailValido(email) ? 'Digite um e-mail válido.' : undefined;
   const erroSenha = validar && !senha ? 'Digite sua senha.' : undefined;
-  const mensagem = aviso && aviso !== 'confirmado' ? mensagens[aviso] : null;
-  const avisoDeErro = aviso === 'invalido' || aviso === 'indisponivel';
+  const mensagem = aviso ? mensagens[aviso] : null;
 
   async function enviar() {
     if (enviando) return;
 
+    fecharAviso();
     setValidar(true);
     setErro(null);
     if (!emailValido(email) || !senha) return;
@@ -64,20 +62,11 @@ export function LoginScreen({
   }
 
   return (
-    <ContaLayout
-      titulo="Bem-vindo de volta"
-      subtitulo="Organize seus estudos em um só lugar."
-    >
+    <ContaLayout titulo="Bem-vindo de volta" subtitulo="Organize seus estudos em um só lugar.">
       {mensagem && (
-        <View style={[styles.aviso, avisoDeErro && styles.avisoDeErro]}>
+        <View style={styles.aviso}>
           <View style={styles.linhaAviso}>
-            <Feather
-              accessible={false}
-              aria-hidden
-              color={avisoDeErro ? cores.erro : cores.roxo}
-              name={avisoDeErro ? 'alert-circle' : 'info'}
-              size={20}
-            />
+            <Feather accessible={false} aria-hidden color={cores.roxo} name="info" size={20} />
             <Text accessibilityRole="alert" style={styles.mensagem}>
               {mensagem}
             </Text>
@@ -85,14 +74,14 @@ export function LoginScreen({
               accessibilityLabel="Fechar aviso"
               accessibilityRole="button"
               onPress={fecharAviso}
-              style={({ pressed }) => [styles.fecharAviso, pressed && styles.fecharAvisoPressionado]}
+              style={({ pressed }) => [
+                styles.fecharAviso,
+                pressed && styles.fecharAvisoPressionado,
+              ]}
             >
               <Feather accessible={false} aria-hidden color={cores.texto} name="x" size={18} />
             </Pressable>
           </View>
-          {aviso === 'invalido' && (
-            <LinkConta texto="Reenviar confirmação" onPress={abrirReenvioConfirmacao} />
-          )}
         </View>
       )}
 
@@ -142,11 +131,25 @@ export function LoginScreen({
               texto="Esqueci minha senha"
               discreto
               desativado={enviando}
-              onPress={recuperarSenha}
+              onPress={() => {
+                setErro(null);
+                setSenha('');
+                recuperarSenha();
+              }}
             />
           </View>
 
-          {erro && <MensagemErro mensagem={erro} />}
+          {erro && <MensagemErro mensagem={erro.mensagem} />}
+          {erro?.confirmarEmail && (
+            <LinkConta
+              texto="Reenviar código de confirmação"
+              onPress={() => {
+                setErro(null);
+                setSenha('');
+                abrirReenvioConfirmacao(email);
+              }}
+            />
+          )}
 
           <BotaoConta
             texto={enviando ? 'Entrando…' : 'Entrar'}
@@ -182,10 +185,6 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 5,
     paddingVertical: 5,
-  },
-  avisoDeErro: {
-    backgroundColor: '#FFF2F4',
-    borderColor: '#F2C8D2',
   },
   linhaAviso: {
     alignItems: 'center',

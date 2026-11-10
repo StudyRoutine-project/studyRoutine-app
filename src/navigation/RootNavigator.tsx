@@ -1,22 +1,23 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { useLinkConta } from '../hooks/useLinkConta';
 import { useSessao } from '../hooks/useSessao';
 import { CadastroScreen } from '../screens/CadastroScreen';
 import { InicioScreen } from '../screens/InicioScreen';
 import { LoginScreen } from '../screens/LoginScreen';
-import { RecuperarSenhaScreen } from '../screens/RecuperarSenhaScreen';
 import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScreen';
+import { VerificarCodigoScreen } from '../screens/VerificarCodigoScreen';
 import { cores } from '../theme/cores';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { AvisoConta, FinalidadeCodigo } from '../services/autenticacao';
 
 type Rotas = {
   Login: undefined;
-  Cadastro: { somenteReenvio: boolean } | undefined;
+  Cadastro: { reenviarPara?: string } | undefined;
   SolicitarRecuperacao: undefined;
-  RecuperarSenha: undefined;
+  VerificarCodigo: { email: string; finalidade: FinalidadeCodigo };
   Inicio: undefined;
 };
 
@@ -24,16 +25,9 @@ const Stack = createNativeStackNavigator<Rotas>();
 
 export function RootNavigator({ client }: { client: SupabaseClient }) {
   const usuario = useSessao(client);
-  const {
-    aviso,
-    recuperacao,
-    chaveConta,
-    limparAviso,
-    finalizarRecuperacao,
-    concluirRecuperacao,
-  } = useLinkConta(client, Boolean(usuario));
+  const [aviso, setAviso] = useState<AvisoConta | null>(null);
 
-  if (usuario === undefined || recuperacao === 'abrindo') {
+  if (usuario === undefined) {
     return (
       <View style={styles.carregamento}>
         <ActivityIndicator accessibilityLabel="Abrindo o StudyRoutine" color={cores.roxo} />
@@ -43,41 +37,29 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {recuperacao ? (
-        <Stack.Screen name="RecuperarSenha" navigationKey={`senha-${chaveConta}`}>
-          {({ navigation }) => (
-            <RecuperarSenhaScreen
-              client={client}
-              estado={recuperacao}
-              concluir={concluirRecuperacao}
-              voltar={finalizarRecuperacao}
-              solicitarInstrucoes={() => navigation.navigate('SolicitarRecuperacao')}
-            />
-          )}
-        </Stack.Screen>
-      ) : usuario ? (
+      {usuario ? (
         <Stack.Screen name="Inicio">
           {() => <InicioScreen client={client} usuario={usuario} />}
         </Stack.Screen>
       ) : (
-        <Stack.Group navigationKey={`conta-${chaveConta}`}>
+        <Stack.Group>
           <Stack.Screen name="Login">
             {({ navigation }) => (
               <LoginScreen
                 client={client}
                 aviso={aviso}
-                fecharAviso={limparAviso}
+                fecharAviso={() => setAviso(null)}
                 abrirCadastro={() => {
-                  limparAviso();
+                  setAviso(null);
                   navigation.navigate('Cadastro');
                 }}
                 recuperarSenha={() => {
-                  limparAviso();
+                  setAviso(null);
                   navigation.navigate('SolicitarRecuperacao');
                 }}
-                abrirReenvioConfirmacao={() => {
-                  limparAviso();
-                  navigation.navigate('Cadastro', { somenteReenvio: true });
+                abrirReenvioConfirmacao={(email) => {
+                  setAviso(null);
+                  navigation.navigate('Cadastro', { reenviarPara: email });
                 }}
               />
             )}
@@ -86,25 +68,46 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
             {({ navigation, route }) => (
               <CadastroScreen
                 client={client}
-                somenteReenvio={route.params?.somenteReenvio ?? false}
+                reenviarPara={route.params?.reenviarPara}
                 voltar={() => navigation.goBack()}
+                verificarCodigo={(email) => {
+                  if (navigation.isFocused()) {
+                    navigation.navigate('VerificarCodigo', { email, finalidade: 'cadastro' });
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="SolicitarRecuperacao">
+            {({ navigation }) => (
+              <SolicitarRecuperacaoScreen
+                client={client}
+                voltar={() => navigation.goBack()}
+                verificarCodigo={(email) => {
+                  if (navigation.isFocused()) {
+                    navigation.navigate('VerificarCodigo', { email, finalidade: 'recuperacao' });
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="VerificarCodigo">
+            {({ navigation, route }) => (
+              <VerificarCodigoScreen
+                client={client}
+                email={route.params.email}
+                finalidade={route.params.finalidade}
+                voltar={() => navigation.goBack()}
+                concluir={(mensagem) => {
+                  if (!navigation.isFocused()) return;
+                  setAviso(mensagem);
+                  navigation.popToTop();
+                }}
               />
             )}
           </Stack.Screen>
         </Stack.Group>
       )}
-      <Stack.Screen name="SolicitarRecuperacao" navigationKey={`recuperar-${chaveConta}`}>
-        {({ navigation }) => (
-          <SolicitarRecuperacaoScreen
-            client={client}
-            voltar={() => {
-              limparAviso();
-              finalizarRecuperacao();
-              navigation.popToTop();
-            }}
-          />
-        )}
-      </Stack.Screen>
     </Stack.Navigator>
   );
 }

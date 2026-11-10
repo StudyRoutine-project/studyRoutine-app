@@ -26,7 +26,7 @@ type MensagemEmail = {
 };
 
 assert.ok(process.env.SUPABASE_API_PORT, 'falta a porta da API no .env');
-assert.ok(process.env.SUPABASE_LOCAL_SMTP_PORT, 'falta a porta do Mailpit no .env');
+assert.ok(process.env.SUPABASE_LOCAL_SMTP_PORT, 'falta a porta da caixa de e-mail no .env');
 const chavePublica = process.env.SUPABASE_PUBLISHABLE_KEY;
 const chaveSecreta = process.env.SUPABASE_SECRET_KEY;
 assert.ok(chavePublica, 'falta a chave pública no .env');
@@ -34,7 +34,7 @@ assert.ok(chaveSecreta, 'falta a chave secreta no .env');
 const chaves = { publica: chavePublica, secreta: chaveSecreta };
 
 const url = new URL(`http://localhost:${process.env.SUPABASE_API_PORT}`).origin;
-const mailpit = new URL(`http://localhost:${process.env.SUPABASE_LOCAL_SMTP_PORT}`).origin;
+const urlCaixaEmail = new URL(`http://localhost:${process.env.SUPABASE_LOCAL_SMTP_PORT}`).origin;
 
 export async function requisitar<T = unknown>(
   caminho: string,
@@ -63,10 +63,10 @@ export async function requisitar<T = unknown>(
 
 const lidos = new Set<string>();
 
-export async function lerLink(email: string) {
+export async function lerCodigo(email: string) {
   for (let tentativa = 0; tentativa < 30; tentativa++) {
     const resposta = await fetch(
-      `${mailpit}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`,
+      `${urlCaixaEmail}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`,
       {
         signal: AbortSignal.timeout(5000),
       },
@@ -75,24 +75,16 @@ export async function lerLink(email: string) {
     const mensagem = caixa.messages.find((item) => !lidos.has(item.ID));
     if (mensagem) {
       lidos.add(mensagem.ID);
-      const detalhe: MensagemEmail = await fetch(`${mailpit}/api/v1/message/${mensagem.ID}`, {
+      const detalhe: MensagemEmail = await fetch(`${urlCaixaEmail}/api/v1/message/${mensagem.ID}`, {
         signal: AbortSignal.timeout(5000),
       }).then((r) => r.json());
-      const link = detalhe.HTML.match(/href="([^"]+\/verify\?[^"]+)"/);
-      assert.ok(link, 'link não encontrado no e-mail');
-      return link[1].replaceAll('&amp;', '&');
+      const codigo = detalhe.HTML.match(/<strong class="codigo">\s*(\d{6,10})\s*<\/strong>/);
+      assert.ok(codigo, 'código não encontrado no e-mail');
+      return codigo[1];
     }
     await setTimeout(100);
   }
-  assert.fail('o e-mail não chegou ao Mailpit');
-}
-
-export async function abrirLink(link: string) {
-  const resposta = await fetch(link, { redirect: 'manual', signal: AbortSignal.timeout(10_000) });
-  assert.equal(resposta.status, 303);
-  const destino = resposta.headers.get('location');
-  assert.ok(destino, 'redirecionamento não informado');
-  return new URL(destino);
+  assert.fail('o e-mail não chegou à caixa de entrada');
 }
 
 export function sincronizar<E extends Entidade>(

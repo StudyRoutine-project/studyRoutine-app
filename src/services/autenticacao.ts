@@ -1,4 +1,4 @@
-import { isAuthPKCECodeVerifierMissingError, isAuthRetryableFetchError } from '@supabase/supabase-js';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -6,60 +6,25 @@ const erroLogin = 'Não foi possível entrar agora. Tente de novo.';
 const erroCadastro = 'Não foi possível criar a conta. Tente de novo.';
 const erroEnvio = 'Não foi possível enviar o e-mail. Tente de novo.';
 const erroConexao = 'Sem conexão. Confira sua internet e tente de novo.';
-const caminhos = {
-  confirmacao: 'confirmar',
-  recuperacao: 'nova-senha',
-};
 
 export const minimoSenha = 8;
 
-export type ResultadoLinkConta = 'confirmado' | 'entrar' | 'invalido' | 'indisponivel';
-export type AvisoConta = ResultadoLinkConta | 'senha-alterada';
-export type TipoLinkConta = keyof typeof caminhos;
-export type LinkConta = {
-  tipo: TipoLinkConta;
-  codigo: string | null;
-  flowId: string | null;
+export type AvisoConta = 'email-confirmado' | 'senha-alterada';
+export type FinalidadeCodigo = 'cadastro' | 'recuperacao';
+export type FalhaLogin = {
+  mensagem: string;
+  confirmarEmail?: true;
 };
-
-export function retornoContaWeb(tipo: TipoLinkConta) {
-  if (typeof window === 'undefined' || !window.history) return null;
-  if (!/^https?:$/.test(window.location?.protocol)) return null;
-
-  return `${window.location.origin}/auth/${caminhos[tipo]}`;
-}
-
-function retornoConta(tipo: TipoLinkConta) {
-  return retornoContaWeb(tipo) ?? `studyroutine://auth/${caminhos[tipo]}`;
-}
-
-export function lerLinkConta(link: string): LinkConta | null {
-  let url: URL;
-
-  try {
-    url = new URL(link);
-  } catch {
-    return null;
-  }
-
-  const retorno = `${url.protocol}//${url.host}${url.pathname}`;
-  const tipo = (Object.keys(caminhos) as TipoLinkConta[]).find((item) => (
-    retorno === `studyroutine://auth/${caminhos[item]}` || retorno === retornoContaWeb(item)
-  ));
-  if (!tipo) return null;
-
-  return {
-    tipo,
-    codigo: url.searchParams.get('code'),
-    flowId: url.searchParams.get('sb_flow_id'),
-  };
-}
 
 export function emailValido(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-export async function entrar(client: SupabaseClient, email: string, senha: string) {
+export async function entrar(
+  client: SupabaseClient,
+  email: string,
+  senha: string,
+): Promise<FalhaLogin | null> {
   try {
     const { error } = await client.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
@@ -67,14 +32,18 @@ export async function entrar(client: SupabaseClient, email: string, senha: strin
     });
 
     if (!error) return null;
-    if (isAuthRetryableFetchError(error)) return erroConexao;
-    if (error.code === 'invalid_credentials') return 'E-mail ou senha inválidos.';
-    if (error.code === 'email_not_confirmed') return 'Confirme seu e-mail antes de entrar.';
-    if (error.status === 429) return 'Muitas tentativas. Aguarde um pouco e tente de novo.';
+    if (isAuthRetryableFetchError(error)) return { mensagem: erroConexao };
+    if (error.code === 'invalid_credentials') return { mensagem: 'E-mail ou senha inválidos.' };
+    if (error.code === 'email_not_confirmed') {
+      return { mensagem: 'Confirme seu e-mail antes de entrar.', confirmarEmail: true };
+    }
+    if (error.status === 429) {
+      return { mensagem: 'Muitas tentativas. Aguarde um pouco e tente de novo.' };
+    }
 
-    return erroLogin;
+    return { mensagem: erroLogin };
   } catch {
-    return erroLogin;
+    return { mensagem: erroLogin };
   }
 }
 
@@ -90,7 +59,6 @@ export async function cadastrar(
       password: senha,
       options: {
         data: { nome: nome.trim() },
-        emailRedirectTo: retornoConta('confirmacao'),
       },
     });
 
@@ -110,7 +78,6 @@ export async function reenviarConfirmacao(client: SupabaseClient, email: string)
     const { error } = await client.auth.resend({
       type: 'signup',
       email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: retornoConta('confirmacao') },
     });
 
     if (!error) return null;
@@ -125,9 +92,7 @@ export async function reenviarConfirmacao(client: SupabaseClient, email: string)
 
 export async function solicitarRecuperacao(client: SupabaseClient, email: string) {
   try {
-    const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: retornoConta('recuperacao'),
-    });
+    const { error } = await client.auth.resetPasswordForEmail(email.trim().toLowerCase());
 
     if (!error) return null;
     if (isAuthRetryableFetchError(error)) return erroConexao;
@@ -139,29 +104,30 @@ export async function solicitarRecuperacao(client: SupabaseClient, email: string
   }
 }
 
-export async function validarLinkConta(
+export async function validarCodigo(
   client: SupabaseClient,
-  { tipo, codigo, flowId }: LinkConta,
-): Promise<ResultadoLinkConta> {
-  if (!codigo) return 'invalido';
+  email: string,
+  codigo: string,
+  finalidade: FinalidadeCodigo,
+) {
+  const erroCodigo = 'Não foi possível validar o código. Tente de novo.';
 
   try {
-    if (tipo === 'confirmacao') {
-      const { data: { session } } = await client.auth.getSession();
-      if (session) return 'confirmado';
+    const { data, error } = await client.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token: codigo,
+      type: finalidade === 'recuperacao' ? 'recovery' : 'email',
+    });
+
+    if (!error && data.session) return null;
+    if (error && isAuthRetryableFetchError(error)) return erroConexao;
+    if (error?.code === 'otp_expired' || error?.code === 'invalid_otp') {
+      return 'Código incorreto ou expirado. Confira o código ou peça outro.';
     }
-
-    const { error } = await client.auth.exchangeCodeForSession(
-      codigo,
-      flowId ? { flowId } : undefined,
-    );
-    if (!error) return 'confirmado';
-    if (tipo === 'confirmacao' && isAuthPKCECodeVerifierMissingError(error)) return 'entrar';
-    if (isAuthRetryableFetchError(error)) return 'indisponivel';
-
-    return 'invalido';
+    if (error?.status === 429) return 'Muitas tentativas. Aguarde um pouco e tente de novo.';
+    return erroCodigo;
   } catch {
-    return 'indisponivel';
+    return erroCodigo;
   }
 }
 
@@ -184,7 +150,7 @@ export async function salvarNovaSenha(client: SupabaseClient, senha: string) {
   }
 }
 
-export async function encerrarRecuperacao(client: SupabaseClient) {
+export async function encerrarSessaoTemporaria(client: SupabaseClient) {
   try {
     const { error } = await client.auth.signOut({ scope: 'local' });
     if (!error || isAuthRetryableFetchError(error)) return null;

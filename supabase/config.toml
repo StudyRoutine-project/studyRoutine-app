@@ -16,13 +16,6 @@ enabled = false
 
 [auth]
 enabled = true
-site_url = "studyroutine://auth/confirmar"
-additional_redirect_urls = [
-  "studyroutine://auth/confirmar",
-  "studyroutine://auth/nova-senha",
-  "http://localhost:*/auth/confirmar",
-  "http://localhost:*/auth/nova-senha",
-]
 minimum_password_length = 8
 enable_anonymous_sign_ins = false
 
