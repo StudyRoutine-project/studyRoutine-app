@@ -12,23 +12,32 @@ import { cores } from '../theme/cores';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ComponentRef } from 'react';
-import type { ResultadoConfirmacao } from '../services/autenticacao';
+import type { AvisoConta } from '../services/autenticacao';
 
 type Props = {
   client: SupabaseClient;
-  aviso: ResultadoConfirmacao | null;
+  aviso: AvisoConta | null;
   fecharAviso: () => void;
   abrirCadastro: () => void;
-  pedirNovoLink: () => void;
+  recuperarSenha: () => void;
+  abrirReenvioConfirmacao: () => void;
 };
 
 const mensagens = {
+  'senha-alterada': 'Senha alterada. Entre com sua nova senha.',
   entrar: 'Entre com o e-mail e a senha que você cadastrou.',
-  invalido: 'Este link de confirmação é inválido ou expirou.',
-  indisponivel: 'Não foi possível abrir o link. Confira a conexão e tente de novo.',
+  invalido: 'A confirmação é inválida ou expirou. Solicite outro e-mail.',
+  indisponivel: 'Não foi possível confirmar o e-mail. Confira a conexão e tente de novo.',
 };
 
-export function LoginScreen({ client, aviso, fecharAviso, abrirCadastro, pedirNovoLink }: Props) {
+export function LoginScreen({
+  client,
+  aviso,
+  fecharAviso,
+  abrirCadastro,
+  recuperarSenha,
+  abrirReenvioConfirmacao,
+}: Props) {
   const campoSenha = useRef<ComponentRef<typeof TextInput>>(null);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -82,7 +91,7 @@ export function LoginScreen({ client, aviso, fecharAviso, abrirCadastro, pedirNo
             </Pressable>
           </View>
           {aviso === 'invalido' && (
-            <LinkConta texto="Pedir novo link" onPress={pedirNovoLink} />
+            <LinkConta texto="Reenviar confirmação" onPress={abrirReenvioConfirmacao} />
           )}
         </View>
       )}
@@ -107,29 +116,46 @@ export function LoginScreen({ client, aviso, fecharAviso, abrirCadastro, pedirNo
         value={email}
       />
 
-      <CampoConta
-        ref={campoSenha}
-        rotulo="Senha"
-        icone="lock"
-        senha
-        erro={erroSenha}
-        autoCapitalize="none"
-        autoComplete="current-password"
-        autoCorrect={false}
-        editable={!enviando}
-        onChangeText={(valor) => {
-          setSenha(valor);
-          setErro(null);
-        }}
-        onSubmitEditing={enviar}
-        placeholder="Digite sua senha"
-        returnKeyType="go"
-        value={senha}
-      />
+      <View>
+        <CampoConta
+          ref={campoSenha}
+          rotulo="Senha"
+          icone="lock"
+          senha
+          erro={erroSenha}
+          autoCapitalize="none"
+          autoComplete="current-password"
+          autoCorrect={false}
+          editable={!enviando}
+          onChangeText={(valor) => {
+            setSenha(valor);
+            setErro(null);
+          }}
+          onSubmitEditing={enviar}
+          placeholder="Digite sua senha"
+          returnKeyType="go"
+          value={senha}
+        />
+        <View style={styles.acesso}>
+          <View style={styles.recuperacao}>
+            <LinkConta
+              texto="Esqueci minha senha"
+              discreto
+              desativado={enviando}
+              onPress={recuperarSenha}
+            />
+          </View>
 
-      {erro && <MensagemErro mensagem={erro} />}
+          {erro && <MensagemErro mensagem={erro} />}
 
-      <BotaoConta texto={enviando ? 'Entrando…' : 'Entrar'} ocupado={enviando} onPress={enviar} />
+          <BotaoConta
+            texto={enviando ? 'Entrando…' : 'Entrar'}
+            ocupado={enviando}
+            onPress={enviar}
+          />
+        </View>
+      </View>
+
       <LinkConta
         pergunta="Ainda não tem conta?"
         texto="Criar conta"
@@ -141,8 +167,15 @@ export function LoginScreen({ client, aviso, fecharAviso, abrirCadastro, pedirNo
 }
 
 const styles = StyleSheet.create({
+  acesso: {
+    gap: 8,
+  },
+  recuperacao: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
   aviso: {
-    backgroundColor: '#F2EEFF',
+    backgroundColor: cores.fundoAviso,
     borderColor: '#DCD2FF',
     borderWidth: 1,
     borderRadius: 14,

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text } from 'react-native';
 
-import type { ViewStyle } from 'react-native';
+import type { TextStyle } from 'react-native';
 
 import { cores } from '../../theme/cores';
 
@@ -10,29 +10,35 @@ type Props = {
   pergunta?: string;
   onPress: () => void;
   desativado?: boolean;
+  discreto?: boolean;
 };
 
-export function LinkConta({ texto, pergunta, onPress, desativado = false }: Props) {
+export function LinkConta({ texto, pergunta, onPress, desativado = false, discreto = false }: Props) {
   const [sobCursor, setSobCursor] = useState(false);
 
   return (
     <Pressable
       accessibilityLabel={texto}
-      accessibilityRole="button"
+      accessibilityRole="link"
       disabled={desativado}
       onHoverIn={() => setSobCursor(true)}
       onHoverOut={() => setSobCursor(false)}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.link,
-        (sobCursor || pressed) && !desativado && styles.realce,
-        desativado && styles.desativado,
-      ]}
+      style={[styles.link, desativado && styles.desativado]}
     >
-      <Text style={styles.texto}>
-        {pergunta && <Text style={styles.pergunta}>{pergunta}{' '}</Text>}
-        {texto}
-      </Text>
+      {({ pressed }) => (
+        <Text style={[styles.texto, discreto && styles.discreto]}>
+          {pergunta && <Text style={styles.pergunta}>{pergunta}{' '}</Text>}
+          <Text
+            style={[
+              styles.acao,
+              (sobCursor || pressed) && !desativado && styles.textoRealcado,
+            ]}
+          >
+            {texto}
+          </Text>
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -41,15 +47,8 @@ const styles = StyleSheet.create({
   link: {
     alignSelf: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 48,
     paddingHorizontal: 8,
-    borderRadius: 10,
-    ...Platform.select({
-      web: { transitionProperty: 'background-color', transitionDuration: '140ms' } as ViewStyle,
-    }),
-  },
-  realce: {
-    backgroundColor: cores.fundo,
   },
   desativado: {
     opacity: 0.55,
@@ -59,9 +58,28 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   texto: {
-    color: cores.roxo,
     fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  discreto: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  acao: {
+    color: cores.roxo,
+    ...Platform.select({
+      web: {
+        textUnderlineOffset: 4,
+        textDecorationThickness: 1,
+        transitionProperty: 'color, text-decoration-color',
+        transitionDuration: '140ms',
+      } as TextStyle,
+    }),
+  },
+  textoRealcado: {
+    color: cores.roxoClaro,
+    textDecorationColor: cores.roxoClaro,
+    textDecorationLine: 'underline',
   },
 });

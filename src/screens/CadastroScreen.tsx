@@ -6,7 +6,7 @@ import { BotaoConta } from '../components/conta/BotaoConta';
 import { CampoConta } from '../components/conta/CampoConta';
 import { ContaLayout } from '../components/conta/ContaLayout';
 import { LinkConta } from '../components/conta/LinkConta';
-import { cadastrar, emailValido, reenviarConfirmacao } from '../services/autenticacao';
+import { cadastrar, emailValido, minimoSenha, reenviarConfirmacao } from '../services/autenticacao';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ComponentRef } from 'react';
@@ -16,8 +16,6 @@ type Props = {
   somenteReenvio: boolean;
   voltar: () => void;
 };
-
-const minimoSenha = 8;
 
 export function CadastroScreen({ client, somenteReenvio, voltar }: Props) {
 
@@ -37,7 +35,7 @@ export function CadastroScreen({ client, somenteReenvio, voltar }: Props) {
   const nomeValido = Boolean(nome.trim());
   const senhaValida = senha.length >= minimoSenha;
   const senhasIguais = Boolean(confirmacao) && senha === confirmacao;
-  const titulo = somenteReenvio ? 'Pedir novo link' : 'Criar conta';
+  const titulo = somenteReenvio ? 'Reenviar confirmação' : 'Criar conta';
   const subtitulo = somenteReenvio
     ? 'Informe seu e-mail.'
     : 'Comece a organizar seus estudos.';
@@ -88,7 +86,7 @@ export function CadastroScreen({ client, somenteReenvio, voltar }: Props) {
     return (
       <ContaLayout
         titulo="Confira seu e-mail"
-        subtitulo={`Abra o link enviado para ${email.trim().toLowerCase()} para confirmar a conta.`}
+        subtitulo={`Abra o e-mail enviado para ${email.trim().toLowerCase()} e confirme sua conta.`}
       >
         {erro && <MensagemErro mensagem={erro} />}
         <BotaoConta
@@ -192,7 +190,7 @@ export function CadastroScreen({ client, somenteReenvio, voltar }: Props) {
       {erro && <MensagemErro mensagem={erro} />}
 
       <BotaoConta
-        texto={enviando ? 'Enviando…' : somenteReenvio ? 'Enviar link' : 'Criar conta'}
+        texto={enviando ? 'Enviando…' : somenteReenvio ? 'Enviar confirmação' : 'Criar conta'}
         ocupado={enviando}
         onPress={enviar}
       />

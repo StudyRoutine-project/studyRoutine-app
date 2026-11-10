@@ -35,7 +35,7 @@ export function BotaoConta({ texto, onPress, ocupado = false, concluido = false 
       ]}
     >
       <LinearGradient
-        colors={['#6849EB', cores.roxo, '#2E1B88']}
+        colors={[cores.roxoClaro, cores.roxo, '#2E1B88']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.gradiente}
@@ -43,12 +43,12 @@ export function BotaoConta({ texto, onPress, ocupado = false, concluido = false 
         <Text style={styles.texto}>{texto}</Text>
         {ocupado ? (
           <ActivityIndicator color={cores.branco} style={styles.icone} />
-        ) : (
+        ) : concluido && (
           <Feather
             accessible={false}
             aria-hidden
             color={cores.branco}
-            name={concluido ? 'check' : 'arrow-right'}
+            name="check"
             size={21}
             style={styles.icone}
           />
@@ -62,7 +62,6 @@ const styles = StyleSheet.create({
   botao: {
     borderRadius: 27,
     overflow: 'hidden',
-    marginTop: 7,
     ...Platform.select({
       web: { transitionProperty: 'opacity, transform', transitionDuration: '140ms' } as ViewStyle,
     }),
