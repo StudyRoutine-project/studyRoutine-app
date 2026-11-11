@@ -54,6 +54,7 @@ export function CadastroScreen({ client, reenviarPara, verificarCodigo, voltar }
     setErro(falha);
 
     if (!falha) {
+      setValidar(false);
       setSenha('');
       setConfirmacao('');
       verificarCodigo(email.trim().toLowerCase());
