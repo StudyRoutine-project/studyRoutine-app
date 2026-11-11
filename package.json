@@ -31,7 +31,6 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "test:db": "supabase test db supabase/tests/database",
