@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execSync } from 'node:child_process';
 import { setTimeout } from 'node:timers/promises';
 import type {
   DadosConta,
@@ -25,22 +26,37 @@ type MensagemEmail = {
   HTML: string;
 };
 
-assert.ok(process.env.SUPABASE_API_PORT, 'falta a porta da API no .env');
-assert.ok(process.env.SUPABASE_LOCAL_SMTP_PORT, 'falta a porta da caixa de e-mail no .env');
+function consultarSupabaseLocal(): { API_URL?: string; MAILPIT_URL?: string } {
+  try {
+    const status = execSync('supabase status --agent=no --output-format=json', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 15_000,
+    });
+    return JSON.parse(status);
+  } catch {
+    throw new Error(
+      'Não foi possível consultar o Supabase local. Confira se supabase status funciona.',
+    );
+  }
+}
+
 const chavePublica = process.env.SUPABASE_PUBLISHABLE_KEY;
 const chaveSecreta = process.env.SUPABASE_SECRET_KEY;
 assert.ok(chavePublica, 'falta a chave pública no .env');
 assert.ok(chaveSecreta, 'falta a chave secreta no .env');
 const chaves = { publica: chavePublica, secreta: chaveSecreta };
 
-const url = new URL(`http://localhost:${process.env.SUPABASE_API_PORT}`).origin;
-const urlCaixaEmail = new URL(`http://localhost:${process.env.SUPABASE_LOCAL_SMTP_PORT}`).origin;
+const { API_URL: enderecoApi, MAILPIT_URL: enderecoCaixaEmail } = consultarSupabaseLocal();
+assert.ok(enderecoApi && enderecoCaixaEmail, 'A API e a caixa de e-mail precisam estar ativas.');
+export const urlApi = new URL(enderecoApi).origin;
+const urlCaixaEmail = new URL(enderecoCaixaEmail).origin;
 
 export async function requisitar<T = unknown>(
   caminho: string,
   { metodo = 'GET', dados, token, status = 200, admin = false }: OpcoesRequisicao = {},
 ): Promise<T> {
-  const resposta = await fetch(`${url}${caminho}`, {
+  const resposta = await fetch(`${urlApi}${caminho}`, {
     method: metodo,
     headers: {
       apikey: admin ? chaves.secreta : chaves.publica,

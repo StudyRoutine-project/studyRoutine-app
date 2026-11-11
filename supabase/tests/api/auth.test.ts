@@ -12,7 +12,7 @@ import {
   solicitarRecuperacao,
   validarCodigo,
 } from '../../../src/services/autenticacao.ts';
-import { lerCodigo, requisitar } from './client.ts';
+import { lerCodigo, requisitar, urlApi } from './client.ts';
 
 import type { Sessao } from './types.ts';
 
@@ -21,13 +21,9 @@ test('confirma o cadastro e recupera a senha com códigos por e-mail', async (t)
   const senha = 'Estudo!2026-Abc';
   const novaSenha = 'Nova!Senha2026-Abc';
   const cliente = () =>
-    createClient(
-      `http://localhost:${process.env.SUPABASE_API_PORT}`,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
-      {
-        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-      },
-    );
+    createClient(urlApi, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
   const app = cliente();
   const confirmacao = cliente();
   const recuperacao = cliente();
