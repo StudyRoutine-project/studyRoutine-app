@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Confirme seu e-mail no StudyRoutine</title>
+    <style>
+      body {
+        margin: 0;
+        background-color: #f5f3fc;
+        color: #201738;
+        font-family: Arial, sans-serif;
+      }
+
+      .fundo {
+        background-color: #f5f3fc;
+      }
+
+      .margem {
+        padding: 32px 16px;
+      }
+
+      .cartao {
+        max-width: 520px;
+        background-color: #ffffff;
+        border: 1px solid #e7e1f5;
+        border-radius: 16px;
+      }
+
+      .conteudo {
+        padding: 32px 28px;
+      }
+
+      .marca {
+        margin: 0 0 24px;
+        color: #5135d9;
+        font-size: 22px;
+        font-weight: bold;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 26px;
+        line-height: 1.25;
+      }
+
+      .mensagem {
+        margin: 0 0 24px;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      .codigo {
+        display: inline-block;
+        padding: 14px 22px;
+        background-color: #5135d9;
+        border-radius: 8px;
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: bold;
+        letter-spacing: 4px;
+      }
+
+      .rodape {
+        margin: 24px 0 0;
+        color: #625979;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <table class="fundo" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr>
+        <td class="margem" align="center">
+          <table class="cartao" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td class="conteudo">
+                <p class="marca">StudyRoutine</p>
+                <h1>Confirme seu e-mail</h1>
+                <p class="mensagem">
+                  Digite o código abaixo no StudyRoutine para confirmar seu cadastro.
+                </p>
+                <strong class="codigo">{{ .Token }}</strong>
+                <p class="rodape">
+                  Se você não criou uma conta no StudyRoutine, pode ignorar este e-mail.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
