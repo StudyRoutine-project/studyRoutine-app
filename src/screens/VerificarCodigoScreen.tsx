@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Keyboard, Text } from 'react-native';
+import { Keyboard, StyleSheet, Text } from 'react-native';
 
+import { BotaoVoltar } from '../components/BotaoVoltar';
 import { MensagemErro } from '../components/MensagemErro';
 import { BotaoConta } from '../components/conta/BotaoConta';
 import { CampoConta } from '../components/conta/CampoConta';
@@ -103,9 +104,11 @@ export function VerificarCodigoScreen({ client, email, finalidade, voltar, concl
       titulo={recuperando ? 'Recuperar senha' : 'Confirme seu e-mail'}
       subtitulo={
         recuperando
-          ? 'Se houver uma conta com esse e-mail, você receberá um código de recuperação.'
+          ? 'Confira seu e-mail e digite o código.'
           : `Digite o código enviado para ${email}.`
       }
+      compacto
+      acaoTopo={<BotaoVoltar desativado={!!acao} onPress={voltar} />}
     >
       <CampoConta
         rotulo="Código do e-mail"
@@ -125,22 +128,30 @@ export function VerificarCodigoScreen({ client, email, finalidade, voltar, concl
         value={codigo}
       />
       {erro && <MensagemErro mensagem={erro} />}
-      {reenviado && (
-        <Text accessibilityLiveRegion="polite" style={{ color: cores.texto }}>
-          {recuperando ? 'Se houver uma conta, um novo código foi enviado.' : 'Código reenviado.'}
-        </Text>
-      )}
       <BotaoConta
         texto={acao === 'validar' ? 'Validando…' : 'Confirmar código'}
         ocupado={!!acao}
         onPress={confirmar}
       />
       <LinkConta
+        pergunta={acao === 'reenviar' ? undefined : 'Não recebeu?'}
         texto={acao === 'reenviar' ? 'Enviando…' : 'Reenviar código'}
         desativado={!!acao}
         onPress={reenviar}
       />
-      <LinkConta texto="Voltar" desativado={!!acao} onPress={voltar} />
+      {reenviado && (
+        <Text accessibilityLiveRegion="polite" style={styles.avisoReenvio}>
+          {recuperando ? 'Se houver uma conta, um novo código foi enviado.' : 'Código reenviado.'}
+        </Text>
+      )}
     </ContaLayout>
   );
 }
+
+const styles = StyleSheet.create({
+  avisoReenvio: {
+    color: cores.texto,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});

@@ -13,17 +13,18 @@ import { cores } from '../../theme/cores';
 
 import type { ReactNode } from 'react';
 
-const logo = require('../../../assets/logo.png');
+const logoNome = require('../../../assets/logo-nome.png');
 const ilustracao = require('../../../assets/ilustracao.png');
 
 type Props = {
   titulo: string;
   subtitulo: string;
   compacto?: boolean;
+  acaoTopo?: ReactNode;
   children: ReactNode;
 };
 
-export function ContaLayout({ titulo, subtitulo, compacto = false, children }: Props) {
+export function ContaLayout({ titulo, subtitulo, compacto = false, acaoTopo, children }: Props) {
   return (
     <SafeAreaView style={styles.tela}>
       <KeyboardAvoidingView
@@ -32,13 +33,16 @@ export function ContaLayout({ titulo, subtitulo, compacto = false, children }: P
       >
         <ScrollView contentContainerStyle={styles.conteudo} keyboardShouldPersistTaps="handled">
           <View style={styles.coluna}>
-            <Image
-              accessible
-              accessibilityLabel="StudyRoutine"
-              resizeMode="contain"
-              source={logo}
-              style={styles.logo}
-            />
+            <View style={styles.cabecalho}>
+              {acaoTopo}
+              <Image
+                accessible
+                accessibilityLabel="StudyRoutine"
+                resizeMode="contain"
+                source={logoNome}
+                style={styles.logo}
+              />
+            </View>
             <Image
               accessible={false}
               resizeMode="contain"
@@ -79,7 +83,13 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 392,
   },
+  cabecalho: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
+  },
   logo: {
+    flexShrink: 1,
     width: '72%',
     maxWidth: 264,
     height: 'auto',

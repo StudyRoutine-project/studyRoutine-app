@@ -11,6 +11,9 @@
     "android": {
       "predictiveBackGestureEnabled": false
     },
+    "web": {
+      "favicon": "./assets/logo.png"
+    },
     "plugins": [
       [
         "expo-secure-store",

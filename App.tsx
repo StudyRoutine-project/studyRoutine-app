@@ -20,14 +20,15 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       {supabase ? (
-        <NavigationContainer theme={temaNavegacao}>
+        <NavigationContainer
+          theme={temaNavegacao}
+          documentTitle={{ formatter: () => 'StudyRoutine' }}
+        >
           <RootNavigator client={supabase} />
         </NavigationContainer>
       ) : (
         <SafeAreaView style={styles.aviso}>
-          <Text style={styles.texto}>
-            Não foi possível abrir o StudyRoutine.
-          </Text>
+          <Text style={styles.texto}>Não foi possível abrir o StudyRoutine.</Text>
         </SafeAreaView>
       )}
     </SafeAreaProvider>

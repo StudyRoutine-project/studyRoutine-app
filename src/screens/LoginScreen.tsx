@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useRef, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { MensagemErro } from '../components/MensagemErro';
@@ -24,7 +25,7 @@ type Props = {
 };
 
 const mensagens = {
-  'email-confirmado': 'E-mail confirmado. Entre com sua senha.',
+  'email-confirmado': 'E-mail confirmado. Entre com sua conta.',
   'senha-alterada': 'Senha alterada. Entre com sua nova senha.',
 };
 
@@ -36,6 +37,7 @@ export function LoginScreen({
   recuperarSenha,
   abrirReenvioConfirmacao,
 }: Props) {
+  const navigation = useNavigation();
   const campoSenha = useRef<ComponentRef<typeof TextInput>>(null);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -46,6 +48,13 @@ export function LoginScreen({
   const erroEmail = validar && !emailValido(email) ? 'Digite um e-mail válido.' : undefined;
   const erroSenha = validar && !senha ? 'Digite sua senha.' : undefined;
   const mensagem = aviso ? mensagens[aviso] : null;
+
+  useEffect(() => {
+    return navigation.addListener('blur', () => {
+      setValidar(false);
+      setErro(null);
+    });
+  }, [navigation]);
 
   async function enviar() {
     if (enviando) return;
@@ -132,7 +141,6 @@ export function LoginScreen({
               discreto
               desativado={enviando}
               onPress={() => {
-                setErro(null);
                 setSenha('');
                 recuperarSenha();
               }}
@@ -144,7 +152,6 @@ export function LoginScreen({
             <LinkConta
               texto="Reenviar código de confirmação"
               onPress={() => {
-                setErro(null);
                 setSenha('');
                 abrirReenvioConfirmacao(email);
               }}
