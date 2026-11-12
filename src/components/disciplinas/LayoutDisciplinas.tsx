@@ -6,12 +6,14 @@ import { BotaoVoltar } from '../BotaoVoltar';
 import { CabecalhoMarca } from '../CabecalhoMarca';
 
 import type { ReactNode } from 'react';
+import type { SafeAreaViewProps } from 'react-native-safe-area-context';
 
 type Props = {
   titulo: string;
   subtitulo?: string;
   voltar?: () => void;
   voltarDesativado?: boolean;
+  edges?: SafeAreaViewProps['edges'];
   children: ReactNode;
 };
 
@@ -20,10 +22,11 @@ export function LayoutDisciplinas({
   subtitulo,
   voltar,
   voltarDesativado,
+  edges,
   children,
 }: Props) {
   return (
-    <SafeAreaView style={styles.tela}>
+    <SafeAreaView edges={edges} style={styles.tela}>
       <View style={styles.conteudo}>
         <CabecalhoMarca
           compacto

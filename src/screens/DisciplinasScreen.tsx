@@ -19,12 +19,11 @@ type Props = {
   usuarioId: string;
   novaDisciplina: () => void;
   abrirDisciplina: (disciplinaId: string) => void;
-  voltar?: () => void;
 };
 
 type EstadoLista = 'carregando' | 'erro' | Disciplina[];
 
-export function DisciplinasScreen({ usuarioId, novaDisciplina, abrirDisciplina, voltar }: Props) {
+export function DisciplinasScreen({ usuarioId, novaDisciplina, abrirDisciplina }: Props) {
   const [disciplinas, setDisciplinas] = useState<EstadoLista>('carregando');
   const [tentativa, setTentativa] = useState(0);
   const [busca, setBusca] = useState('');
@@ -61,7 +60,7 @@ export function DisciplinasScreen({ usuarioId, novaDisciplina, abrirDisciplina, 
     <LayoutDisciplinas
       titulo="Disciplinas"
       subtitulo="Organize suas matérias e atividades."
-      voltar={voltar}
+      edges={['top', 'left', 'right']}
     >
       {disciplinas === 'carregando' ? (
         <View style={styles.centro}>

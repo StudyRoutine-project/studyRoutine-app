@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CabecalhoMarca } from '../components/CabecalhoMarca';
 import { MensagemErro } from '../components/MensagemErro';
-import { Botao } from '../components/Botao';
 import { cores } from '../theme/cores';
 
 import type { SupabaseClient, User } from '@supabase/supabase-js';
@@ -11,10 +11,9 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 type Props = {
   client: SupabaseClient;
   usuario: User;
-  abrirDisciplinas: () => void;
 };
 
-export function InicioScreen({ client, usuario, abrirDisciplinas }: Props) {
+export function InicioScreen({ client, usuario }: Props) {
   const [saindo, setSaindo] = useState(false);
   const [erro, setErro] = useState(false);
   const nome = usuario.user_metadata.nome;
@@ -36,13 +35,13 @@ export function InicioScreen({ client, usuario, abrirDisciplinas }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.tela}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.tela}>
       <View style={styles.conteudo}>
+        <CabecalhoMarca compacto />
         <Text accessibilityRole="header" style={styles.titulo}>Início</Text>
         <Text style={styles.conta}>
           {typeof nome === 'string' && nome.trim() ? `Olá, ${nome.trim()}!` : usuario.email}
         </Text>
-        <Botao texto="Disciplinas" onPress={abrirDisciplinas} />
         <Pressable accessibilityRole="button" disabled={saindo} onPress={sair} style={styles.botao}>
           <Text style={styles.textoBotao}>{saindo ? 'Saindo…' : 'Sair da conta'}</Text>
         </Pressable>
@@ -58,13 +57,16 @@ const styles = StyleSheet.create({
     backgroundColor: cores.fundo,
   },
   conteudo: {
-    padding: 28,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     gap: 12,
   },
   titulo: {
     color: cores.texto,
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '700',
+    letterSpacing: -1.1,
+    marginTop: 12,
   },
   conta: {
     color: cores.secundario,

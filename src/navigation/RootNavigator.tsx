@@ -4,14 +4,13 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useSessao } from '../hooks/useSessao';
 import { CadastroScreen } from '../screens/CadastroScreen';
-import { DisciplinasScreen } from '../screens/DisciplinasScreen';
 import { EditarDisciplinaScreen } from '../screens/EditarDisciplinaScreen';
-import { InicioScreen } from '../screens/InicioScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { NovaDisciplinaScreen } from '../screens/NovaDisciplinaScreen';
 import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScreen';
 import { VerificarCodigoScreen } from '../screens/VerificarCodigoScreen';
 import { cores } from '../theme/cores';
+import { AbasNavigator } from './AbasNavigator';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AvisoConta, FinalidadeCodigo } from '../services/autenticacao';
@@ -21,8 +20,7 @@ type Rotas = {
   Cadastro: { reenviarPara?: string } | undefined;
   SolicitarRecuperacao: undefined;
   VerificarCodigo: { email: string; finalidade: FinalidadeCodigo };
-  Inicio: undefined;
-  Disciplinas: undefined;
+  Abas: undefined;
   NovaDisciplina: undefined;
   EditarDisciplina: { disciplinaId: string };
 };
@@ -45,24 +43,15 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {usuario ? (
         <Stack.Group navigationKey={usuario.id}>
-          <Stack.Screen name="Inicio">
+          <Stack.Screen name="Abas">
             {({ navigation }) => (
-              <InicioScreen
+              <AbasNavigator
                 client={client}
                 usuario={usuario}
-                abrirDisciplinas={() => navigation.navigate('Disciplinas')}
-              />
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="Disciplinas">
-            {({ navigation }) => (
-              <DisciplinasScreen
-                usuarioId={usuario.id}
                 novaDisciplina={() => navigation.navigate('NovaDisciplina')}
                 abrirDisciplina={(disciplinaId) =>
                   navigation.navigate('EditarDisciplina', { disciplinaId })
                 }
-                voltar={() => navigation.goBack()}
               />
             )}
           </Stack.Screen>
