@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MensagemErro } from '../components/MensagemErro';
-import { BotaoConta } from '../components/conta/BotaoConta';
+import { Botao } from '../components/Botao';
 import { cores } from '../theme/cores';
 
 import type { SupabaseClient, User } from '@supabase/supabase-js';
@@ -42,7 +42,7 @@ export function InicioScreen({ client, usuario, abrirDisciplinas }: Props) {
         <Text style={styles.conta}>
           {typeof nome === 'string' && nome.trim() ? `Olá, ${nome.trim()}!` : usuario.email}
         </Text>
-        <BotaoConta texto="Disciplinas" onPress={abrirDisciplinas} />
+        <Botao texto="Disciplinas" onPress={abrirDisciplinas} />
         <Pressable accessibilityRole="button" disabled={saindo} onPress={sair} style={styles.botao}>
           <Text style={styles.textoBotao}>{saindo ? 'Saindo…' : 'Sair da conta'}</Text>
         </Pressable>

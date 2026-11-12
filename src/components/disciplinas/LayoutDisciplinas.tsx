@@ -3,25 +3,37 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cores } from '../../theme/cores';
 import { BotaoVoltar } from '../BotaoVoltar';
+import { CabecalhoMarca } from '../CabecalhoMarca';
 
 import type { ReactNode } from 'react';
 
 type Props = {
   titulo: string;
-  voltar: () => void;
+  subtitulo?: string;
+  voltar?: () => void;
   voltarDesativado?: boolean;
   children: ReactNode;
 };
 
-export function LayoutDisciplinas({ titulo, voltar, voltarDesativado, children }: Props) {
+export function LayoutDisciplinas({
+  titulo,
+  subtitulo,
+  voltar,
+  voltarDesativado,
+  children,
+}: Props) {
   return (
     <SafeAreaView style={styles.tela}>
       <View style={styles.conteudo}>
-        <View style={styles.cabecalho}>
-          <BotaoVoltar onPress={voltar} desativado={voltarDesativado} />
+        <CabecalhoMarca
+          compacto
+          acao={voltar && <BotaoVoltar onPress={voltar} desativado={voltarDesativado} />}
+        />
+        <View style={styles.apresentacao}>
           <Text accessibilityRole="header" style={styles.titulo}>
             {titulo}
           </Text>
+          {subtitulo && <Text style={styles.subtitulo}>{subtitulo}</Text>}
         </View>
         {children}
       </View>
@@ -40,18 +52,22 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 520,
     paddingHorizontal: 24,
+    paddingTop: 28,
   },
-  cabecalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 18,
+  apresentacao: {
+    gap: 4,
+    paddingTop: 24,
+    paddingBottom: 18,
   },
   titulo: {
-    flex: 1,
     color: cores.texto,
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '700',
-    letterSpacing: -0.7,
+    letterSpacing: -1.1,
+  },
+  subtitulo: {
+    color: cores.secundario,
+    fontSize: 15,
+    lineHeight: 21,
   },
 });

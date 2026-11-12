@@ -32,11 +32,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 48,
     height: 48,
-    borderRadius: 14,
-    backgroundColor: cores.fundoAviso,
   },
   pressionado: {
-    backgroundColor: cores.borda,
+    opacity: 0.7,
   },
   desativado: {
     opacity: 0.55,

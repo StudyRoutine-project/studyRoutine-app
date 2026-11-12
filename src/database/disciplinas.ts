@@ -1,5 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 
+import { normalizarTexto } from '../utils/normalizarTexto';
 import { abrirBanco } from './banco';
 
 type DadosDisciplina = {
@@ -18,6 +19,13 @@ export type Disciplina = {
   atualizada_em: string;
 };
 
+export class NomeDisciplinaDuplicadoError extends Error {
+  constructor() {
+    super('Já existe uma disciplina com esse nome.');
+    this.name = 'NomeDisciplinaDuplicadoError';
+  }
+}
+
 const disciplinasAtivas = `
   SELECT id, usuario_id, nome, descricao, cor, criada_em, atualizada_em
   FROM disciplinas WHERE usuario_id = ? AND excluida = 0`;
@@ -29,12 +37,21 @@ export async function cadastrarDisciplina(usuarioId: string, dados: DadosDiscipl
   if (!nome) throw new Error('Informe o nome da disciplina.');
   if (!/^#[0-9a-f]{6}$/i.test(cor)) throw new Error('Escolha uma cor válida.');
 
+  const nomeNormalizado = normalizarTexto(nome);
   const id = randomUUID();
   const operacaoId = randomUUID();
   const agora = new Date().toISOString();
   const db = await abrirBanco();
 
   await db.withExclusiveTransactionAsync(async (transacao) => {
+    const disciplinas = await transacao.getAllAsync<{ nome: string }>(
+      'SELECT nome FROM disciplinas WHERE usuario_id = ? AND excluida = 0',
+      usuarioId,
+    );
+    if (disciplinas.some((disciplina) => normalizarTexto(disciplina.nome) === nomeNormalizado)) {
+      throw new NomeDisciplinaDuplicadoError();
+    }
+
     await transacao.runAsync(
       `INSERT INTO disciplinas (usuario_id, id, nome, descricao, cor, criada_em, atualizada_em)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,

@@ -1,20 +1,24 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
+import { Botao } from '../components/Botao';
+import { CampoTexto } from '../components/CampoTexto';
+import { EstadoVazio } from '../components/EstadoVazio';
 import { MensagemErro } from '../components/MensagemErro';
-import { BotaoConta } from '../components/conta/BotaoConta';
+import { FichaDisciplina } from '../components/disciplinas/FichaDisciplina';
 import { LayoutDisciplinas } from '../components/disciplinas/LayoutDisciplinas';
 import { listarDisciplinas } from '../database/disciplinas';
 import { cores } from '../theme/cores';
+import { normalizarTexto } from '../utils/normalizarTexto';
 
 import type { Disciplina } from '../database/disciplinas';
 
 type Props = {
   usuarioId: string;
   novaDisciplina: () => void;
-  voltar: () => void;
+  voltar?: () => void;
 };
 
 type EstadoLista = 'carregando' | 'erro' | Disciplina[];
@@ -22,6 +26,7 @@ type EstadoLista = 'carregando' | 'erro' | Disciplina[];
 export function DisciplinasScreen({ usuarioId, novaDisciplina, voltar }: Props) {
   const [disciplinas, setDisciplinas] = useState<EstadoLista>('carregando');
   const [tentativa, setTentativa] = useState(0);
+  const [busca, setBusca] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -41,8 +46,22 @@ export function DisciplinasScreen({ usuarioId, novaDisciplina, voltar }: Props) 
     }, [tentativa, usuarioId]),
   );
 
+  const termo = normalizarTexto(busca);
+  const lista = Array.isArray(disciplinas)
+    ? disciplinas.filter((disciplina) => normalizarTexto(disciplina.nome).includes(termo))
+    : [];
+
+  function abrirFormulario() {
+    setBusca('');
+    novaDisciplina();
+  }
+
   return (
-    <LayoutDisciplinas titulo="Disciplinas" voltar={voltar}>
+    <LayoutDisciplinas
+      titulo="Disciplinas"
+      subtitulo="Organize suas matérias e atividades."
+      voltar={voltar}
+    >
       {disciplinas === 'carregando' ? (
         <View style={styles.centro}>
           <ActivityIndicator color={cores.roxo} accessibilityLabel="Carregando disciplinas" />
@@ -50,46 +69,55 @@ export function DisciplinasScreen({ usuarioId, novaDisciplina, voltar }: Props) 
       ) : disciplinas === 'erro' ? (
         <View style={styles.centro}>
           <MensagemErro mensagem="Não foi possível carregar as disciplinas." />
-          <BotaoConta texto="Tentar de novo" onPress={() => setTentativa(tentativa + 1)} />
+          <Botao texto="Tentar de novo" onPress={() => setTentativa(tentativa + 1)} />
         </View>
       ) : (
         <>
+          <View style={styles.acoes}>
+            {disciplinas.length > 0 && (
+              <CampoTexto
+                accessibilityLabel="Buscar disciplina"
+                icone="search"
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={setBusca}
+                placeholder="Buscar disciplina"
+                returnKeyType="search"
+                value={busca}
+                acao={
+                  busca !== '' && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Limpar busca"
+                      onPress={() => setBusca('')}
+                      style={styles.limpar}
+                    >
+                      <Feather aria-hidden name="x" size={19} color={cores.secundario} />
+                    </Pressable>
+                  )
+                }
+              />
+            )}
+            <Botao texto="Nova disciplina" icone="plus-circle" onPress={abrirFormulario} />
+          </View>
           <FlatList
-            data={disciplinas}
+            data={lista}
             keyExtractor={(disciplina) => disciplina.id}
             contentContainerStyle={styles.lista}
+            keyboardShouldPersistTaps="handled"
             ListEmptyComponent={
-              <View style={styles.vazio}>
-                <View style={styles.iconeVazio}>
-                  <Feather
-                    accessible={false}
-                    aria-hidden
-                    name="book-open"
-                    size={28}
-                    color={cores.roxo}
-                  />
-                </View>
-                <Text style={styles.nome}>Cadastre sua primeira disciplina</Text>
-                <Text style={styles.descricao}>Escolha uma cor para encontrá-la na lista.</Text>
-              </View>
+              <EstadoVazio
+                mensagem={
+                  disciplinas.length === 0
+                    ? 'Nenhuma disciplina cadastrada'
+                    : 'Nenhuma disciplina encontrada'
+                }
+              />
             }
             renderItem={({ item }) => (
-              <View style={styles.ficha}>
-                <View style={[styles.lombada, { backgroundColor: item.cor }]} />
-                <View style={styles.dados}>
-                  <Text style={styles.nome}>{item.nome}</Text>
-                  {item.descricao ? (
-                    <Text style={styles.descricao} numberOfLines={2}>
-                      {item.descricao}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
+              <FichaDisciplina nome={item.nome} descricao={item.descricao} cor={item.cor} />
             )}
           />
-          <View style={styles.rodape}>
-            <BotaoConta texto="Nova disciplina" onPress={novaDisciplina} />
-          </View>
         </>
       )}
     </LayoutDisciplinas>
@@ -104,50 +132,9 @@ const styles = StyleSheet.create({
   },
   lista: {
     gap: 12,
-    paddingVertical: 8,
+    paddingTop: 14,
+    paddingBottom: 24,
   },
-  vazio: {
-    alignItems: 'flex-start',
-    backgroundColor: cores.fundoAviso,
-    borderRadius: 20,
-    gap: 8,
-    padding: 22,
-  },
-  iconeVazio: {
-    backgroundColor: cores.branco,
-    borderRadius: 15,
-    padding: 12,
-    marginBottom: 6,
-  },
-  ficha: {
-    flexDirection: 'row',
-    overflow: 'hidden',
-    backgroundColor: cores.branco,
-    borderColor: cores.borda,
-    borderWidth: 1,
-    borderRadius: 16,
-  },
-  lombada: {
-    width: 7,
-  },
-  dados: {
-    flex: 1,
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-  },
-  nome: {
-    color: cores.texto,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  descricao: {
-    color: cores.secundario,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  rodape: {
-    paddingTop: 12,
-    paddingBottom: 16,
-  },
+  acoes: { gap: 12 },
+  limpar: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
 });
