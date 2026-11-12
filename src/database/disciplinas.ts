@@ -2,6 +2,7 @@ import { randomUUID } from 'expo-crypto';
 
 import { normalizarTexto } from '../utils/normalizarTexto';
 import { abrirBanco } from './banco';
+import { registrarOperacaoPendente } from './operacoesPendentes';
 
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -59,22 +60,6 @@ async function validarNomeDisponivel(
   }
 }
 
-async function registrarOperacao(
-  transacao: SQLiteDatabase,
-  usuarioId: string,
-  id: string,
-  dados: DadosDisciplina & { excluida?: true },
-) {
-  await transacao.runAsync(
-    `INSERT INTO operacoes_pendentes (usuario_id, id, entidade, registro_id, dados)
-     VALUES (?, ?, 'disciplinas', ?, ?)`,
-    usuarioId,
-    randomUUID(),
-    id,
-    JSON.stringify(dados),
-  );
-}
-
 export async function cadastrarDisciplina(usuarioId: string, dados: DadosDisciplina) {
   const { nome, descricao, cor } = prepararDados(dados);
   const id = randomUUID();
@@ -94,7 +79,11 @@ export async function cadastrarDisciplina(usuarioId: string, dados: DadosDiscipl
       agora,
       agora,
     );
-    await registrarOperacao(transacao, usuarioId, id, { nome, descricao, cor });
+    await registrarOperacaoPendente(transacao, usuarioId, 'disciplinas', id, {
+      nome,
+      descricao,
+      cor,
+    });
   });
 
   return {
@@ -135,22 +124,34 @@ export async function editarDisciplina(usuarioId: string, id: string, dados: Dad
       id,
     );
     if (changes === 0) throw new Error('Disciplina indisponível.');
-    await registrarOperacao(transacao, usuarioId, id, alteracao);
+    await registrarOperacaoPendente(transacao, usuarioId, 'disciplinas', id, alteracao);
   });
 }
 
 export async function excluirDisciplina(usuarioId: string, id: string) {
   const db = await abrirBanco();
+  const agora = new Date().toISOString();
 
   await db.withExclusiveTransactionAsync(async (transacao) => {
     const dados = await transacao.getFirstAsync<Pick<Disciplina, 'nome' | 'descricao' | 'cor'>>(
       `UPDATE disciplinas SET excluida = 1, atualizada_em = ?
        WHERE usuario_id = ? AND id = ? AND excluida = 0
        RETURNING nome, descricao, cor`,
-      new Date().toISOString(),
+      agora,
       usuarioId,
       id,
     );
-    if (dados) await registrarOperacao(transacao, usuarioId, id, { ...dados, excluida: true });
+    if (!dados) return;
+    await transacao.runAsync(
+      `UPDATE atividades SET excluida = 1, atualizada_em = ?
+       WHERE usuario_id = ? AND disciplina_id = ? AND excluida = 0`,
+      agora,
+      usuarioId,
+      id,
+    );
+    await registrarOperacaoPendente(transacao, usuarioId, 'disciplinas', id, {
+      ...dados,
+      excluida: true,
+    });
   });
 }

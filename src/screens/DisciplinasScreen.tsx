@@ -8,7 +8,7 @@ import { CampoTexto } from '../components/CampoTexto';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { MensagemErro } from '../components/MensagemErro';
 import { FichaDisciplina } from '../components/disciplinas/FichaDisciplina';
-import { LayoutDisciplinas } from '../components/disciplinas/LayoutDisciplinas';
+import { LayoutInterno } from '../components/LayoutInterno';
 import { listarDisciplinas } from '../database/disciplinas';
 import { cores } from '../theme/cores';
 import { normalizarTexto } from '../utils/normalizarTexto';
@@ -64,7 +64,7 @@ export function DisciplinasScreen({
   }
 
   return (
-    <LayoutDisciplinas
+    <LayoutInterno
       titulo="Disciplinas"
       acaoDireita={acaoPerfil}
       subtitulo="Organize suas matérias e atividades."
@@ -133,7 +133,7 @@ export function DisciplinasScreen({
           />
         </>
       )}
-    </LayoutDisciplinas>
+    </LayoutInterno>
   );
 }
 

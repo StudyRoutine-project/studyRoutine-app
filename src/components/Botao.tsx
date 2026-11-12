@@ -14,9 +14,17 @@ type Props = {
   ocupado?: boolean;
   concluido?: boolean;
   icone?: ComponentProps<typeof Feather>['name'];
+  compacto?: boolean;
 };
 
-export function Botao({ texto, onPress, ocupado = false, concluido = false, icone }: Props) {
+export function Botao({
+  texto,
+  onPress,
+  ocupado = false,
+  concluido = false,
+  icone,
+  compacto = false,
+}: Props) {
   const [sobCursor, setSobCursor] = useState(false);
   const desativado = ocupado || concluido;
 
@@ -40,12 +48,22 @@ export function Botao({ texto, onPress, ocupado = false, concluido = false, icon
         colors={[cores.roxoClaro, cores.roxo, '#2E1B88']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.gradiente}
+        style={[
+          styles.gradiente,
+          compacto && styles.gradienteCompacto,
+          compacto && desativado && styles.gradienteComStatus,
+        ]}
       >
         {icone && !ocupado && (
-          <Feather accessible={false} aria-hidden name={icone} size={19} color={cores.branco} />
+          <Feather
+            accessible={false}
+            aria-hidden
+            name={icone}
+            size={compacto ? 17 : 19}
+            color={cores.branco}
+          />
         )}
-        <Text style={styles.texto}>{texto}</Text>
+        <Text style={[styles.texto, compacto && styles.textoCompacto]}>{texto}</Text>
         {ocupado ? (
           <ActivityIndicator color={cores.branco} style={styles.icone} />
         ) : (
@@ -89,6 +107,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 52,
     paddingVertical: 12,
   },
+  gradienteCompacto: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 9 },
+  gradienteComStatus: { paddingHorizontal: 44 },
   texto: {
     flexShrink: 1,
     color: cores.branco,
@@ -96,6 +116,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  textoCompacto: { fontSize: 14 },
   icone: {
     position: 'absolute',
     right: 18,

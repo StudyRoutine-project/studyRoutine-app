@@ -6,7 +6,7 @@ import { cores } from '../../theme/cores';
 import { Botao } from '../Botao';
 import { CampoTexto } from '../CampoTexto';
 import { MensagemErro } from '../MensagemErro';
-import { LayoutDisciplinas } from './LayoutDisciplinas';
+import { LayoutInterno } from '../LayoutInterno';
 import { SeletorCorDisciplina } from './SeletorCorDisciplina';
 
 import type { ComponentRef, ReactNode } from 'react';
@@ -70,7 +70,7 @@ export function FormularioDisciplina({
   }
 
   return (
-    <LayoutDisciplinas
+    <LayoutInterno
       titulo={titulo}
       subtitulo={subtitulo}
       voltar={voltar}
@@ -123,7 +123,7 @@ export function FormularioDisciplina({
           {acaoSecundaria?.(salvando)}
         </ScrollView>
       </KeyboardAvoidingView>
-    </LayoutDisciplinas>
+    </LayoutInterno>
   );
 }
 

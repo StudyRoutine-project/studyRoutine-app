@@ -7,7 +7,7 @@ import { EstadoVazio } from '../components/EstadoVazio';
 import { MensagemErro } from '../components/MensagemErro';
 import { AcaoExcluirDisciplina } from '../components/disciplinas/AcaoExcluirDisciplina';
 import { FormularioDisciplina } from '../components/disciplinas/FormularioDisciplina';
-import { LayoutDisciplinas } from '../components/disciplinas/LayoutDisciplinas';
+import { LayoutInterno } from '../components/LayoutInterno';
 import { buscarDisciplina, editarDisciplina, excluirDisciplina } from '../database/disciplinas';
 import { cores } from '../theme/cores';
 
@@ -18,9 +18,16 @@ type Props = {
   disciplinaId: string;
   voltar: () => void;
   concluir: () => void;
+  concluirExclusao: () => void;
 };
 
-export function EditarDisciplinaScreen({ usuarioId, disciplinaId, voltar, concluir }: Props) {
+export function EditarDisciplinaScreen({
+  usuarioId,
+  disciplinaId,
+  voltar,
+  concluir,
+  concluirExclusao,
+}: Props) {
   const [estado, setEstado] = useState<Disciplina | null | 'carregando' | 'erro'>('carregando');
   const [tentativa, setTentativa] = useState(0);
 
@@ -55,7 +62,7 @@ export function EditarDisciplinaScreen({ usuarioId, disciplinaId, voltar, conclu
             nome={estado.nome}
             desativada={salvando}
             excluir={() => excluirDisciplina(usuarioId, disciplinaId)}
-            concluir={concluir}
+            concluir={concluirExclusao}
           />
         )}
       />
@@ -63,7 +70,7 @@ export function EditarDisciplinaScreen({ usuarioId, disciplinaId, voltar, conclu
   }
 
   return (
-    <LayoutDisciplinas titulo="Editar disciplina" voltar={voltar}>
+    <LayoutInterno titulo="Editar disciplina" voltar={voltar}>
       <View style={styles.estado}>
         {estado === 'carregando' ? (
           <ActivityIndicator color={cores.roxo} accessibilityLabel="Carregando disciplina" />
@@ -76,7 +83,7 @@ export function EditarDisciplinaScreen({ usuarioId, disciplinaId, voltar, conclu
           <EstadoVazio mensagem="Disciplina indisponível" />
         )}
       </View>
-    </LayoutDisciplinas>
+    </LayoutInterno>
   );
 }
 

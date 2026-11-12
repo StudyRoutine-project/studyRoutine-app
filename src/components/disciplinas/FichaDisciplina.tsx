@@ -15,7 +15,7 @@ export function FichaDisciplina({ nome, descricao, cor, onPress }: Props) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={nome}
-      accessibilityHint="Abre a edição da disciplina"
+      accessibilityHint="Abre os detalhes e as atividades da disciplina"
       onPress={onPress}
       style={({ pressed }) => [styles.ficha, pressed && styles.pressionada]}
     >
@@ -30,13 +30,7 @@ export function FichaDisciplina({ nome, descricao, cor, onPress }: Props) {
           </Text>
         ) : null}
       </View>
-      <Feather
-        accessible={false}
-        aria-hidden
-        name="chevron-right"
-        size={19}
-        color={cores.secundario}
-      />
+      <Feather name="chevron-right" size={20} color={cores.roxo} aria-hidden />
     </Pressable>
   );
 }
@@ -45,8 +39,8 @@ const styles = StyleSheet.create({
   ficha: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
     minHeight: 74,
+    gap: 12,
     padding: 12,
     backgroundColor: cores.branco,
     borderColor: cores.borda,
