@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { MensagemErro } from '../components/MensagemErro';
-import { BotaoConta } from '../components/conta/BotaoConta';
+import { Botao } from '../components/Botao';
 import { CampoConta } from '../components/conta/CampoConta';
 import { ContaLayout } from '../components/conta/ContaLayout';
 import { LinkConta } from '../components/conta/LinkConta';
@@ -158,7 +158,7 @@ export function LoginScreen({
             />
           )}
 
-          <BotaoConta
+          <Botao
             texto={enviando ? 'Entrando…' : 'Entrar'}
             ocupado={enviando}
             onPress={enviar}

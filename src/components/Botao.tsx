@@ -3,18 +3,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text } from 'react-native';
 
+import type { ComponentProps } from 'react';
 import type { ViewStyle } from 'react-native';
 
-import { cores } from '../../theme/cores';
+import { cores } from '../theme/cores';
 
 type Props = {
   texto: string;
   onPress: () => void;
   ocupado?: boolean;
   concluido?: boolean;
+  icone?: ComponentProps<typeof Feather>['name'];
 };
 
-export function BotaoConta({ texto, onPress, ocupado = false, concluido = false }: Props) {
+export function Botao({ texto, onPress, ocupado = false, concluido = false, icone }: Props) {
   const [sobCursor, setSobCursor] = useState(false);
   const desativado = ocupado || concluido;
 
@@ -40,18 +42,23 @@ export function BotaoConta({ texto, onPress, ocupado = false, concluido = false 
         end={{ x: 1, y: 1 }}
         style={styles.gradiente}
       >
+        {icone && !ocupado && (
+          <Feather accessible={false} aria-hidden name={icone} size={19} color={cores.branco} />
+        )}
         <Text style={styles.texto}>{texto}</Text>
         {ocupado ? (
           <ActivityIndicator color={cores.branco} style={styles.icone} />
-        ) : concluido && (
-          <Feather
-            accessible={false}
-            aria-hidden
-            color={cores.branco}
-            name="check"
-            size={21}
-            style={styles.icone}
-          />
+        ) : (
+          concluido && (
+            <Feather
+              accessible={false}
+              aria-hidden
+              color={cores.branco}
+              name="check"
+              size={21}
+              style={styles.icone}
+            />
+          )
         )}
       </LinearGradient>
     </Pressable>
@@ -75,12 +82,15 @@ const styles = StyleSheet.create({
   },
   gradiente: {
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
     justifyContent: 'center',
     minHeight: 54,
     paddingHorizontal: 52,
     paddingVertical: 12,
   },
   texto: {
+    flexShrink: 1,
     color: cores.branco,
     fontSize: 17,
     fontWeight: '700',

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Keyboard, TextInput } from 'react-native';
 
 import { MensagemErro } from '../components/MensagemErro';
-import { BotaoConta } from '../components/conta/BotaoConta';
+import { Botao } from '../components/Botao';
 import { CampoConta } from '../components/conta/CampoConta';
 import { ContaLayout } from '../components/conta/ContaLayout';
 import { LinkConta } from '../components/conta/LinkConta';
@@ -54,6 +54,7 @@ export function CadastroScreen({ client, reenviarPara, verificarCodigo, voltar }
     setErro(falha);
 
     if (!falha) {
+      setValidar(false);
       setSenha('');
       setConfirmacao('');
       verificarCodigo(email.trim().toLowerCase());
@@ -149,7 +150,7 @@ export function CadastroScreen({ client, reenviarPara, verificarCodigo, voltar }
 
       {erro && <MensagemErro mensagem={erro} />}
 
-      <BotaoConta
+      <Botao
         texto={enviando ? 'Enviando…' : somenteReenvio ? 'Enviar código' : 'Criar conta'}
         ocupado={enviando}
         onPress={enviar}
