@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useSessao } from '../hooks/useSessao';
 import { CadastroScreen } from '../screens/CadastroScreen';
 import { DetalhesDisciplinaScreen } from '../screens/DetalhesDisciplinaScreen';
+import { EditarAtividadeScreen } from '../screens/EditarAtividadeScreen';
 import { EditarDisciplinaScreen } from '../screens/EditarDisciplinaScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { NovaAtividadeScreen } from '../screens/NovaAtividadeScreen';
@@ -29,6 +30,7 @@ type Rotas = {
   EditarDisciplina: { disciplinaId: string };
   DetalhesDisciplina: { disciplinaId: string };
   NovaAtividade: { disciplinaId: string };
+  EditarAtividade: { atividadeId: string };
 };
 
 const Stack = createNativeStackNavigator<Rotas>();
@@ -68,11 +70,15 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
           <Stack.Screen name="DetalhesDisciplina">
             {({ navigation, route }) => (
               <DetalhesDisciplinaScreen
+                key={route.params.disciplinaId}
                 usuarioId={usuario.id}
                 disciplinaId={route.params.disciplinaId}
                 voltar={() => navigation.goBack()}
                 editarDisciplina={() => navigation.navigate('EditarDisciplina', route.params)}
                 novaAtividade={() => navigation.navigate('NovaAtividade', route.params)}
+                abrirAtividade={(atividadeId) =>
+                  navigation.navigate('EditarAtividade', { atividadeId })
+                }
               />
             )}
           </Stack.Screen>
@@ -85,6 +91,18 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
                 concluir={(disciplinaId) => {
                   if (navigation.isFocused())
                     navigation.popTo('DetalhesDisciplina', { disciplinaId });
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="EditarAtividade">
+            {({ navigation, route }) => (
+              <EditarAtividadeScreen
+                usuarioId={usuario.id}
+                atividadeId={route.params.atividadeId}
+                voltar={() => navigation.goBack()}
+                concluir={() => {
+                  if (navigation.isFocused()) navigation.goBack();
                 }}
               />
             )}

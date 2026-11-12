@@ -5,7 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Botao } from '../components/Botao';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { MensagemErro } from '../components/MensagemErro';
-import { AcaoExcluirDisciplina } from '../components/disciplinas/AcaoExcluirDisciplina';
+import { AcaoExcluirRegistro } from '../components/AcaoExcluirRegistro';
 import { FormularioDisciplina } from '../components/disciplinas/FormularioDisciplina';
 import { LayoutInterno } from '../components/LayoutInterno';
 import { buscarDisciplina, editarDisciplina, excluirDisciplina } from '../database/disciplinas';
@@ -58,7 +58,8 @@ export function EditarDisciplinaScreen({
         voltar={voltar}
         concluir={concluir}
         acaoSecundaria={(salvando) => (
-          <AcaoExcluirDisciplina
+          <AcaoExcluirRegistro
+            entidade="disciplina"
             nome={estado.nome}
             desativada={salvando}
             excluir={() => excluirDisciplina(usuarioId, disciplinaId)}

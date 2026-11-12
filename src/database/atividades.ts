@@ -4,6 +4,8 @@ import { horarioValido } from '../utils/datas';
 import { abrirBanco } from './banco';
 import { registrarOperacaoPendente } from './operacoesPendentes';
 
+import type { SQLiteDatabase } from 'expo-sqlite';
+
 export const tiposAtividade = ['tarefa', 'trabalho', 'prova', 'estudo'] as const;
 export type TipoAtividade = (typeof tiposAtividade)[number];
 
@@ -26,6 +28,10 @@ export type Atividade = DadosAtividade & {
   atualizada_em: string;
 };
 
+type DadosAtividadeAlterada = DadosAtividade & { concluida: Atividade['concluida'] };
+
+const camposAlteracao = 'disciplina_id, titulo, tipo, data, horario, descricao, concluida';
+
 export class DisciplinaIndisponivelError extends Error {
   constructor() {
     super('Escolha uma disciplina disponível.');
@@ -33,7 +39,7 @@ export class DisciplinaIndisponivelError extends Error {
   }
 }
 
-export async function cadastrarAtividade(usuarioId: string, dados: DadosAtividade) {
+function prepararDados(dados: DadosAtividade) {
   const { disciplina_id, tipo, data } = dados;
   const titulo = dados.titulo.trim();
   const descricao = dados.descricao?.trim() || null;
@@ -53,6 +59,12 @@ export async function cadastrarAtividade(usuarioId: string, dados: DadosAtividad
     throw new Error('Informe um horário válido.');
   }
 
+  return { disciplina_id, titulo, tipo, data, horario, descricao };
+}
+
+export async function cadastrarAtividade(usuarioId: string, dados: DadosAtividade) {
+  const alteracao = prepararDados(dados);
+  const { disciplina_id, titulo, tipo, data, horario, descricao } = alteracao;
   const id = randomUUID();
   const agora = new Date().toISOString();
   const db = await abrirBanco();
@@ -75,14 +87,105 @@ export async function cadastrarAtividade(usuarioId: string, dados: DadosAtividad
       disciplina_id,
     );
     if (changes === 0) throw new DisciplinaIndisponivelError();
-    await registrarOperacaoPendente(transacao, usuarioId, 'atividades', id, {
+    await registrarOperacaoPendente(transacao, usuarioId, 'atividades', id, alteracao);
+  });
+}
+
+export async function buscarAtividade(usuarioId: string, id: string) {
+  const db = await abrirBanco();
+  return db.getFirstAsync<Atividade>(
+    `SELECT a.*
+     FROM atividades a JOIN disciplinas d ON d.usuario_id = a.usuario_id AND d.id = a.disciplina_id
+     WHERE a.usuario_id = ? AND a.id = ? AND a.excluida = 0 AND d.excluida = 0`,
+    usuarioId,
+    id,
+  );
+}
+
+export async function editarAtividade(
+  usuarioId: string,
+  id: string,
+  dados: DadosAtividade,
+  concluida?: boolean,
+) {
+  const { disciplina_id, titulo, tipo, data, horario, descricao } = prepararDados(dados);
+  const db = await abrirBanco();
+
+  await db.withExclusiveTransactionAsync(async (transacao) => {
+    const disciplina = await transacao.getFirstAsync(
+      'SELECT 1 FROM disciplinas WHERE usuario_id = ? AND id = ? AND excluida = 0',
+      usuarioId,
+      disciplina_id,
+    );
+    if (!disciplina) throw new DisciplinaIndisponivelError();
+
+    const alteracao = await transacao.getFirstAsync<DadosAtividadeAlterada>(
+      `UPDATE atividades
+       SET disciplina_id = ?, titulo = ?, tipo = ?, data = ?, horario = ?, descricao = ?,
+           concluida = coalesce(?, concluida), atualizada_em = ?
+       WHERE usuario_id = ? AND id = ? AND excluida = 0
+       RETURNING ${camposAlteracao}`,
       disciplina_id,
       titulo,
       tipo,
       data,
       horario,
       descricao,
-    });
+      concluida === undefined ? null : Number(concluida),
+      new Date().toISOString(),
+      usuarioId,
+      id,
+    );
+    if (!alteracao) throw new Error('Atividade indisponível.');
+    await registrarAlteracao(transacao, usuarioId, id, alteracao);
+  });
+}
+
+export async function definirConclusaoAtividade(usuarioId: string, id: string, concluida: boolean) {
+  const db = await abrirBanco();
+
+  await db.withExclusiveTransactionAsync(async (transacao) => {
+    const alteracao = await transacao.getFirstAsync<DadosAtividadeAlterada>(
+      `UPDATE atividades SET concluida = ?, atualizada_em = ?
+       WHERE usuario_id = ? AND id = ? AND excluida = 0
+       RETURNING ${camposAlteracao}`,
+      Number(concluida),
+      new Date().toISOString(),
+      usuarioId,
+      id,
+    );
+    if (!alteracao) throw new Error('Atividade indisponível.');
+    await registrarAlteracao(transacao, usuarioId, id, alteracao);
+  });
+}
+
+export async function excluirAtividade(usuarioId: string, id: string) {
+  const db = await abrirBanco();
+
+  await db.withExclusiveTransactionAsync(async (transacao) => {
+    const alteracao = await transacao.getFirstAsync<DadosAtividadeAlterada>(
+      `UPDATE atividades SET excluida = 1, atualizada_em = ?
+       WHERE usuario_id = ? AND id = ? AND excluida = 0
+       RETURNING ${camposAlteracao}`,
+      new Date().toISOString(),
+      usuarioId,
+      id,
+    );
+    if (alteracao) await registrarAlteracao(transacao, usuarioId, id, alteracao, true);
+  });
+}
+
+async function registrarAlteracao(
+  transacao: SQLiteDatabase,
+  usuarioId: string,
+  id: string,
+  dados: DadosAtividadeAlterada,
+  excluida = false,
+) {
+  await registrarOperacaoPendente(transacao, usuarioId, 'atividades', id, {
+    ...dados,
+    concluida: dados.concluida === 1,
+    excluida,
   });
 }
 
