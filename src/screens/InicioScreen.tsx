@@ -1,52 +1,26 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MensagemErro } from '../components/MensagemErro';
-import { Botao } from '../components/Botao';
+import { CabecalhoMarca } from '../components/CabecalhoMarca';
 import { cores } from '../theme/cores';
 
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { ReactNode } from 'react';
 
 type Props = {
-  client: SupabaseClient;
-  usuario: User;
-  abrirDisciplinas: () => void;
+  nome: string;
+  email?: string;
+  acaoPerfil: ReactNode;
 };
 
-export function InicioScreen({ client, usuario, abrirDisciplinas }: Props) {
-  const [saindo, setSaindo] = useState(false);
-  const [erro, setErro] = useState(false);
-  const nome = usuario.user_metadata.nome;
-
-  async function sair() {
-    if (saindo) return;
-
-    setSaindo(true);
-    setErro(false);
-
-    try {
-      const { error } = await client.auth.signOut({ scope: 'local' });
-      setErro(Boolean(error));
-    } catch {
-      setErro(true);
-    } finally {
-      setSaindo(false);
-    }
-  }
-
+export function InicioScreen({ nome, email, acaoPerfil }: Props) {
   return (
-    <SafeAreaView style={styles.tela}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.tela}>
       <View style={styles.conteudo}>
-        <Text accessibilityRole="header" style={styles.titulo}>Início</Text>
-        <Text style={styles.conta}>
-          {typeof nome === 'string' && nome.trim() ? `Olá, ${nome.trim()}!` : usuario.email}
+        <CabecalhoMarca compacto acaoDireita={acaoPerfil} />
+        <Text accessibilityRole="header" style={styles.titulo}>
+          Início
         </Text>
-        <Botao texto="Disciplinas" onPress={abrirDisciplinas} />
-        <Pressable accessibilityRole="button" disabled={saindo} onPress={sair} style={styles.botao}>
-          <Text style={styles.textoBotao}>{saindo ? 'Saindo…' : 'Sair da conta'}</Text>
-        </Pressable>
-        {erro && <MensagemErro mensagem="Não foi possível sair. Tente de novo." />}
+        {(nome || email) && <Text style={styles.conta}>{nome ? `Olá, ${nome}!` : email}</Text>}
       </View>
     </SafeAreaView>
   );
@@ -58,26 +32,22 @@ const styles = StyleSheet.create({
     backgroundColor: cores.fundo,
   },
   conteudo: {
-    padding: 28,
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 520,
+    paddingHorizontal: 24,
+    paddingTop: 28,
     gap: 12,
   },
   titulo: {
     color: cores.texto,
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '700',
+    letterSpacing: -1.1,
+    marginTop: 12,
   },
   conta: {
     color: cores.secundario,
     fontSize: 16,
-  },
-  botao: {
-    alignSelf: 'flex-start',
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  textoBotao: {
-    color: cores.roxo,
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text } from 'react-native';
 
 import { cores } from '../../theme/cores';
-import { ConfirmarExclusao } from '../ConfirmarExclusao';
+import { ConfirmDialog } from '../ConfirmDialog';
 
 type Props = {
   nome: string;
@@ -57,11 +57,17 @@ export function AcaoExcluirDisciplina({ nome, desativada, excluir, concluir }: P
         <Text style={styles.excluirTexto}>Excluir disciplina</Text>
       </Pressable>
 
-      <ConfirmarExclusao
+      <ConfirmDialog
         visivel={confirmando}
         titulo="Excluir disciplina?"
-        nome={nome}
-        excluindo={excluindo}
+        mensagem={
+          <>
+            <Text style={styles.nome}>{nome}</Text> será excluída.
+          </>
+        }
+        textoConfirmar="Excluir"
+        textoProcessando="Excluindo…"
+        ocupado={excluindo}
         confirmarDesativado={desativada}
         erro={erro ? 'Não foi possível excluir a disciplina. Tente de novo.' : undefined}
         onCancelar={fecharConfirmacao}
@@ -80,5 +86,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   excluirTexto: { color: cores.erro, fontSize: 15, fontWeight: '600' },
+  nome: { fontWeight: '700' },
   ocupado: { opacity: 0.6 },
 });

@@ -13,18 +13,24 @@ import { listarDisciplinas } from '../database/disciplinas';
 import { cores } from '../theme/cores';
 import { normalizarTexto } from '../utils/normalizarTexto';
 
+import type { ReactNode } from 'react';
 import type { Disciplina } from '../database/disciplinas';
 
 type Props = {
   usuarioId: string;
+  acaoPerfil: ReactNode;
   novaDisciplina: () => void;
   abrirDisciplina: (disciplinaId: string) => void;
-  voltar?: () => void;
 };
 
 type EstadoLista = 'carregando' | 'erro' | Disciplina[];
 
-export function DisciplinasScreen({ usuarioId, novaDisciplina, abrirDisciplina, voltar }: Props) {
+export function DisciplinasScreen({
+  usuarioId,
+  acaoPerfil,
+  novaDisciplina,
+  abrirDisciplina,
+}: Props) {
   const [disciplinas, setDisciplinas] = useState<EstadoLista>('carregando');
   const [tentativa, setTentativa] = useState(0);
   const [busca, setBusca] = useState('');
@@ -60,8 +66,9 @@ export function DisciplinasScreen({ usuarioId, novaDisciplina, abrirDisciplina, 
   return (
     <LayoutDisciplinas
       titulo="Disciplinas"
+      acaoDireita={acaoPerfil}
       subtitulo="Organize suas matérias e atividades."
-      voltar={voltar}
+      edges={['top', 'left', 'right']}
     >
       {disciplinas === 'carregando' ? (
         <View style={styles.centro}>

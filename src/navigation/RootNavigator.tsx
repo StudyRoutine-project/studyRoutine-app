@@ -4,14 +4,14 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useSessao } from '../hooks/useSessao';
 import { CadastroScreen } from '../screens/CadastroScreen';
-import { DisciplinasScreen } from '../screens/DisciplinasScreen';
 import { EditarDisciplinaScreen } from '../screens/EditarDisciplinaScreen';
-import { InicioScreen } from '../screens/InicioScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { NovaDisciplinaScreen } from '../screens/NovaDisciplinaScreen';
+import { PerfilScreen } from '../screens/PerfilScreen';
 import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScreen';
 import { VerificarCodigoScreen } from '../screens/VerificarCodigoScreen';
 import { cores } from '../theme/cores';
+import { AbasNavigator } from './AbasNavigator';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AvisoConta, FinalidadeCodigo } from '../services/autenticacao';
@@ -21,8 +21,8 @@ type Rotas = {
   Cadastro: { reenviarPara?: string } | undefined;
   SolicitarRecuperacao: undefined;
   VerificarCodigo: { email: string; finalidade: FinalidadeCodigo };
-  Inicio: undefined;
-  Disciplinas: undefined;
+  Abas: undefined;
+  Perfil: undefined;
   NovaDisciplina: undefined;
   EditarDisciplina: { disciplinaId: string };
 };
@@ -32,6 +32,8 @@ const Stack = createNativeStackNavigator<Rotas>();
 export function RootNavigator({ client }: { client: SupabaseClient }) {
   const usuario = useSessao(client);
   const [aviso, setAviso] = useState<AvisoConta | null>(null);
+  const nome = usuario?.user_metadata.nome;
+  const nomeUsuario = typeof nome === 'string' ? nome.trim() : '';
 
   if (usuario === undefined) {
     return (
@@ -45,23 +47,26 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {usuario ? (
         <Stack.Group navigationKey={usuario.id}>
-          <Stack.Screen name="Inicio">
+          <Stack.Screen name="Abas">
             {({ navigation }) => (
-              <InicioScreen
-                client={client}
-                usuario={usuario}
-                abrirDisciplinas={() => navigation.navigate('Disciplinas')}
-              />
-            )}
-          </Stack.Screen>
-          <Stack.Screen name="Disciplinas">
-            {({ navigation }) => (
-              <DisciplinasScreen
+              <AbasNavigator
                 usuarioId={usuario.id}
+                nome={nomeUsuario}
+                email={usuario.email}
+                abrirPerfil={() => navigation.navigate('Perfil')}
                 novaDisciplina={() => navigation.navigate('NovaDisciplina')}
                 abrirDisciplina={(disciplinaId) =>
                   navigation.navigate('EditarDisciplina', { disciplinaId })
                 }
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Perfil">
+            {({ navigation }) => (
+              <PerfilScreen
+                client={client}
+                nome={nomeUsuario}
+                email={usuario.email}
                 voltar={() => navigation.goBack()}
               />
             )}

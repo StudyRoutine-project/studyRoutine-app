@@ -3,22 +3,28 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { cores } from '../theme/cores';
 import { MensagemErro } from './MensagemErro';
 
+import type { ReactNode } from 'react';
+
 type Props = {
   visivel: boolean;
   titulo: string;
-  nome: string;
-  excluindo: boolean;
+  mensagem: ReactNode;
+  textoConfirmar: string;
+  textoProcessando: string;
+  ocupado: boolean;
   confirmarDesativado?: boolean;
   erro?: string;
   onCancelar: () => void;
   onConfirmar: () => void;
 };
 
-export function ConfirmarExclusao({
+export function ConfirmDialog({
   visivel,
   titulo,
-  nome,
-  excluindo,
+  mensagem,
+  textoConfirmar,
+  textoProcessando,
+  ocupado,
   confirmarDesativado = false,
   erro,
   onCancelar,
@@ -30,7 +36,7 @@ export function ConfirmarExclusao({
       transparent
       visible={visivel}
       onRequestClose={() => {
-        if (!excluindo) onCancelar();
+        if (!ocupado) onCancelar();
       }}
     >
       <View style={styles.fundo}>
@@ -39,13 +45,13 @@ export function ConfirmarExclusao({
             {titulo}
           </Text>
           <Text numberOfLines={4} style={styles.descricao}>
-            <Text style={styles.nome}>{nome}</Text> será excluída.
+            {mensagem}
           </Text>
           {erro && <MensagemErro mensagem={erro} />}
           <View style={styles.botoes}>
             <Pressable
               accessibilityRole="button"
-              disabled={excluindo}
+              disabled={ocupado}
               onPress={onCancelar}
               style={styles.cancelar}
             >
@@ -53,12 +59,14 @@ export function ConfirmarExclusao({
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ busy: excluindo }}
-              disabled={confirmarDesativado || excluindo}
+              accessibilityState={{ busy: ocupado }}
+              disabled={confirmarDesativado || ocupado}
               onPress={onConfirmar}
-              style={[styles.confirmar, excluindo && styles.ocupado]}
+              style={[styles.confirmar, ocupado && styles.ocupado]}
             >
-              <Text style={styles.confirmarTexto}>{excluindo ? 'Excluindo…' : 'Excluir'}</Text>
+              <Text style={styles.confirmarTexto}>
+                {ocupado ? textoProcessando : textoConfirmar}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -85,7 +93,6 @@ const styles = StyleSheet.create({
   },
   titulo: { color: cores.texto, fontSize: 22, fontWeight: '700' },
   descricao: { color: cores.secundario, fontSize: 15, lineHeight: 21 },
-  nome: { fontWeight: '700' },
   botoes: {
     flexDirection: 'row',
     flexWrap: 'wrap',
