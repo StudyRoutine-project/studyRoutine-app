@@ -6,10 +6,11 @@ const logoNome = require('../../assets/logo-nome.png');
 
 type Props = {
   acao?: ReactNode;
+  acaoDireita?: ReactNode;
   compacto?: boolean;
 };
 
-export function CabecalhoMarca({ acao, compacto = false }: Props) {
+export function CabecalhoMarca({ acao, acaoDireita, compacto = false }: Props) {
   return (
     <View style={styles.cabecalho}>
       {acao}
@@ -20,6 +21,7 @@ export function CabecalhoMarca({ acao, compacto = false }: Props) {
         source={logoNome}
         style={[styles.logo, compacto && styles.logoCompacto]}
       />
+      {acaoDireita && <View style={styles.acaoDireita}>{acaoDireita}</View>}
     </View>
   );
 }
@@ -34,4 +36,5 @@ const styles = StyleSheet.create({
     aspectRatio: 590 / 106,
   },
   logoCompacto: { width: '60%', maxWidth: 212 },
+  acaoDireita: { marginLeft: 'auto' },
 });

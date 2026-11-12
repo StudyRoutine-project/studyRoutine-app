@@ -7,6 +7,7 @@ import { CadastroScreen } from '../screens/CadastroScreen';
 import { EditarDisciplinaScreen } from '../screens/EditarDisciplinaScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { NovaDisciplinaScreen } from '../screens/NovaDisciplinaScreen';
+import { PerfilScreen } from '../screens/PerfilScreen';
 import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScreen';
 import { VerificarCodigoScreen } from '../screens/VerificarCodigoScreen';
 import { cores } from '../theme/cores';
@@ -21,6 +22,7 @@ type Rotas = {
   SolicitarRecuperacao: undefined;
   VerificarCodigo: { email: string; finalidade: FinalidadeCodigo };
   Abas: undefined;
+  Perfil: undefined;
   NovaDisciplina: undefined;
   EditarDisciplina: { disciplinaId: string };
 };
@@ -30,6 +32,8 @@ const Stack = createNativeStackNavigator<Rotas>();
 export function RootNavigator({ client }: { client: SupabaseClient }) {
   const usuario = useSessao(client);
   const [aviso, setAviso] = useState<AvisoConta | null>(null);
+  const nome = usuario?.user_metadata.nome;
+  const nomeUsuario = typeof nome === 'string' ? nome.trim() : '';
 
   if (usuario === undefined) {
     return (
@@ -46,12 +50,24 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
           <Stack.Screen name="Abas">
             {({ navigation }) => (
               <AbasNavigator
-                client={client}
-                usuario={usuario}
+                usuarioId={usuario.id}
+                nome={nomeUsuario}
+                email={usuario.email}
+                abrirPerfil={() => navigation.navigate('Perfil')}
                 novaDisciplina={() => navigation.navigate('NovaDisciplina')}
                 abrirDisciplina={(disciplinaId) =>
                   navigation.navigate('EditarDisciplina', { disciplinaId })
                 }
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Perfil">
+            {({ navigation }) => (
+              <PerfilScreen
+                client={client}
+                nome={nomeUsuario}
+                email={usuario.email}
+                voltar={() => navigation.goBack()}
               />
             )}
           </Stack.Screen>
