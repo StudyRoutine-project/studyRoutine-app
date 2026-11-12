@@ -5,6 +5,7 @@ import { cores } from '../../theme/cores';
 
 type Props = {
   cor: string;
+  corOriginal?: string;
   onChange: (cor: string) => void;
   desativado: boolean;
 };
@@ -20,8 +21,13 @@ const coresDisciplina = [
   { nome: 'Laranja', valor: '#CE591F' },
 ];
 
-export function SeletorCorDisciplina({ cor, onChange, desativado }: Props) {
+export function SeletorCorDisciplina({ cor, corOriginal, onChange, desativado }: Props) {
   const { width } = useWindowDimensions();
+  const opcoes =
+    corOriginal &&
+    !coresDisciplina.some(({ valor }) => valor.toUpperCase() === corOriginal.toUpperCase())
+      ? [{ nome: 'Cor original', valor: corOriginal }, ...coresDisciplina]
+      : coresDisciplina;
 
   return (
     <View style={styles.seletor}>
@@ -31,8 +37,8 @@ export function SeletorCorDisciplina({ cor, onChange, desativado }: Props) {
         accessibilityLabel="Cor da disciplina"
         style={styles.grade}
       >
-        {coresDisciplina.map(({ nome, valor }) => {
-          const selecionada = valor === cor;
+        {opcoes.map(({ nome, valor }) => {
+          const selecionada = valor.toUpperCase() === cor.toUpperCase();
           return (
             <Pressable
               key={valor}

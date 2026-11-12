@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { cores } from '../../theme/cores';
 
@@ -7,11 +7,18 @@ type Props = {
   nome: string;
   descricao?: string | null;
   cor: string;
+  onPress: () => void;
 };
 
-export function FichaDisciplina({ nome, descricao, cor }: Props) {
+export function FichaDisciplina({ nome, descricao, cor, onPress }: Props) {
   return (
-    <View style={styles.ficha}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={nome}
+      accessibilityHint="Abre a edição da disciplina"
+      onPress={onPress}
+      style={({ pressed }) => [styles.ficha, pressed && styles.pressionada]}
+    >
       <View style={[styles.livro, { backgroundColor: `${cor}18`, borderLeftColor: cor }]}>
         <Feather accessible={false} aria-hidden name="book-open" size={22} color={cor} />
       </View>
@@ -23,7 +30,14 @@ export function FichaDisciplina({ nome, descricao, cor }: Props) {
           </Text>
         ) : null}
       </View>
-    </View>
+      <Feather
+        accessible={false}
+        aria-hidden
+        name="chevron-right"
+        size={19}
+        color={cores.secundario}
+      />
+    </Pressable>
   );
 }
 
@@ -39,6 +53,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
   },
+  pressionada: { backgroundColor: cores.fundoAviso },
   livro: {
     width: 48,
     height: 48,

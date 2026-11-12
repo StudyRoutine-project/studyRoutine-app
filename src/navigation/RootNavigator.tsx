@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useSessao } from '../hooks/useSessao';
 import { CadastroScreen } from '../screens/CadastroScreen';
 import { DisciplinasScreen } from '../screens/DisciplinasScreen';
+import { EditarDisciplinaScreen } from '../screens/EditarDisciplinaScreen';
 import { InicioScreen } from '../screens/InicioScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { NovaDisciplinaScreen } from '../screens/NovaDisciplinaScreen';
@@ -23,6 +24,7 @@ type Rotas = {
   Inicio: undefined;
   Disciplinas: undefined;
   NovaDisciplina: undefined;
+  EditarDisciplina: { disciplinaId: string };
 };
 
 const Stack = createNativeStackNavigator<Rotas>();
@@ -57,6 +59,9 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
               <DisciplinasScreen
                 usuarioId={usuario.id}
                 novaDisciplina={() => navigation.navigate('NovaDisciplina')}
+                abrirDisciplina={(disciplinaId) =>
+                  navigation.navigate('EditarDisciplina', { disciplinaId })
+                }
                 voltar={() => navigation.goBack()}
               />
             )}
@@ -65,6 +70,18 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
             {({ navigation }) => (
               <NovaDisciplinaScreen
                 usuarioId={usuario.id}
+                voltar={() => navigation.goBack()}
+                concluir={() => {
+                  if (navigation.isFocused()) navigation.goBack();
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="EditarDisciplina">
+            {({ navigation, route }) => (
+              <EditarDisciplinaScreen
+                usuarioId={usuario.id}
+                disciplinaId={route.params.disciplinaId}
                 voltar={() => navigation.goBack()}
                 concluir={() => {
                   if (navigation.isFocused()) navigation.goBack();

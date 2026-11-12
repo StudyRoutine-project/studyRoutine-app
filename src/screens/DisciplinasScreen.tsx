@@ -18,12 +18,13 @@ import type { Disciplina } from '../database/disciplinas';
 type Props = {
   usuarioId: string;
   novaDisciplina: () => void;
+  abrirDisciplina: (disciplinaId: string) => void;
   voltar?: () => void;
 };
 
 type EstadoLista = 'carregando' | 'erro' | Disciplina[];
 
-export function DisciplinasScreen({ usuarioId, novaDisciplina, voltar }: Props) {
+export function DisciplinasScreen({ usuarioId, novaDisciplina, abrirDisciplina, voltar }: Props) {
   const [disciplinas, setDisciplinas] = useState<EstadoLista>('carregando');
   const [tentativa, setTentativa] = useState(0);
   const [busca, setBusca] = useState('');
@@ -115,7 +116,12 @@ export function DisciplinasScreen({ usuarioId, novaDisciplina, voltar }: Props) 
               />
             }
             renderItem={({ item }) => (
-              <FichaDisciplina nome={item.nome} descricao={item.descricao} cor={item.cor} />
+              <FichaDisciplina
+                nome={item.nome}
+                descricao={item.descricao}
+                cor={item.cor}
+                onPress={() => abrirDisciplina(item.id)}
+              />
             )}
           />
         </>
