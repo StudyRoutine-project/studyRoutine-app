@@ -14,21 +14,23 @@ export type DadosAtividade = {
   titulo: string;
   tipo: TipoAtividade;
   data: string;
-  horario?: string | null;
+  horario: string;
   descricao?: string | null;
 };
 
-export type Atividade = DadosAtividade & {
+export type Atividade = Omit<DadosAtividade, 'horario'> & {
   id: string;
   usuario_id: string;
   horario: string | null;
   descricao: string | null;
   concluida: 0 | 1;
+  adiada: 0 | 1;
   criada_em: string;
   atualizada_em: string;
 };
 
-type DadosAtividadeAlterada = DadosAtividade & { concluida: Atividade['concluida'] };
+type DadosAtividadeAlterada = Omit<DadosAtividade, 'horario'> &
+  Pick<Atividade, 'horario' | 'concluida'>;
 
 const camposAlteracao = 'disciplina_id, titulo, tipo, data, horario, descricao, concluida';
 
@@ -40,10 +42,9 @@ export class DisciplinaIndisponivelError extends Error {
 }
 
 function prepararDados(dados: DadosAtividade) {
-  const { disciplina_id, tipo, data } = dados;
+  const { disciplina_id, tipo, data, horario } = dados;
   const titulo = dados.titulo.trim();
   const descricao = dados.descricao?.trim() || null;
-  const horario = dados.horario || null;
   if (!titulo || !tiposAtividade.includes(tipo)) throw new Error('Informe o título e o tipo.');
 
   const dia = new Date(`${data}T00:00:00Z`);
@@ -55,7 +56,7 @@ function prepararDados(dados: DadosAtividade) {
   ) {
     throw new Error('Informe uma data válida.');
   }
-  if (horario && !horarioValido(horario)) {
+  if (!horarioValido(horario)) {
     throw new Error('Informe um horário válido.');
   }
 
@@ -121,13 +122,17 @@ export async function editarAtividade(
 
     const alteracao = await transacao.getFirstAsync<DadosAtividadeAlterada>(
       `UPDATE atividades
-       SET disciplina_id = ?, titulo = ?, tipo = ?, data = ?, horario = ?, descricao = ?,
+       SET disciplina_id = ?, titulo = ?, tipo = ?,
+           adiada = CASE WHEN data = ? AND substr(horario, 1, 5) = ? THEN adiada ELSE 0 END,
+           data = ?, horario = ?, descricao = ?,
            concluida = coalesce(?, concluida), atualizada_em = ?
        WHERE usuario_id = ? AND id = ? AND excluida = 0
        RETURNING ${camposAlteracao}`,
       disciplina_id,
       titulo,
       tipo,
+      data,
+      horario,
       data,
       horario,
       descricao,
@@ -139,6 +144,42 @@ export async function editarAtividade(
     if (!alteracao) throw new Error('Atividade indisponível.');
     await registrarAlteracao(transacao, usuarioId, id, alteracao);
   });
+}
+
+export async function alterarPrazoAtividade(
+  usuarioId: string,
+  anterior: Pick<Atividade, 'id' | 'data' | 'horario'>,
+  prazo: Pick<DadosAtividade, 'data' | 'horario'>,
+) {
+  const db = await abrirBanco();
+  let alterada = false;
+
+  await db.withExclusiveTransactionAsync(async (transacao) => {
+    const alteracao = await transacao.getFirstAsync<DadosAtividadeAlterada>(
+      `UPDATE atividades
+       SET data = ?, horario = ?, adiada = 1, atualizada_em = ?
+       WHERE usuario_id = ? AND id = ? AND excluida = 0 AND concluida = 0
+         AND data = ? AND horario = ?
+         AND EXISTS (
+           SELECT 1 FROM disciplinas d
+           WHERE d.usuario_id = atividades.usuario_id AND d.id = atividades.disciplina_id
+             AND d.excluida = 0
+         )
+       RETURNING ${camposAlteracao}`,
+      prazo.data,
+      prazo.horario,
+      new Date().toISOString(),
+      usuarioId,
+      anterior.id,
+      anterior.data,
+      anterior.horario,
+    );
+    if (!alteracao) return;
+    await registrarAlteracao(transacao, usuarioId, anterior.id, alteracao);
+    alterada = true;
+  });
+
+  return alterada;
 }
 
 export async function definirConclusaoAtividade(usuarioId: string, id: string, concluida: boolean) {
@@ -192,11 +233,25 @@ async function registrarAlteracao(
 export async function listarAtividadesDisciplina(usuarioId: string, disciplinaId: string) {
   const db = await abrirBanco();
   return db.getAllAsync<Atividade>(
-    `SELECT id, usuario_id, disciplina_id, titulo, tipo, data, horario, descricao, concluida,
+    `SELECT id, usuario_id, disciplina_id, titulo, tipo, data, horario, descricao, concluida, adiada,
        criada_em, atualizada_em
      FROM atividades WHERE usuario_id = ? AND disciplina_id = ? AND excluida = 0
      ORDER BY data, horario IS NULL, horario, id`,
     usuarioId,
     disciplinaId,
+  );
+}
+
+export async function listarAtividadesParaLembretes(usuarioId: string) {
+  const db = await abrirBanco();
+  return db.getAllAsync<
+    Pick<Atividade, 'id' | 'titulo' | 'data'> & { horario: string; disciplina: string }
+  >(
+    `SELECT a.id, a.titulo, a.data, a.horario, d.nome AS disciplina
+     FROM atividades a JOIN disciplinas d ON d.usuario_id = a.usuario_id AND d.id = a.disciplina_id
+     WHERE a.usuario_id = ? AND a.concluida = 0 AND a.excluida = 0 AND d.excluida = 0
+       AND a.horario IS NOT NULL
+     ORDER BY a.data, a.horario, a.id`,
+    usuarioId,
   );
 }

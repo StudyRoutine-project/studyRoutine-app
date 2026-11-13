@@ -27,14 +27,14 @@ import { PainelSelecao } from './PainelSelecao';
 import { opcoesTipo, visualTipo } from './tiposAtividade';
 
 import type { ReactNode } from 'react';
-import type { DadosAtividade, TipoAtividade } from '../../database/atividades';
+import type { Atividade, DadosAtividade, TipoAtividade } from '../../database/atividades';
 import type { Disciplina } from '../../database/disciplinas';
 
 type Props = {
   usuarioId: string;
   tituloTela: string;
   subtitulo?: string;
-  valoresIniciais: Partial<DadosAtividade>;
+  valoresIniciais: Partial<Atividade>;
   conclusaoInicial?: boolean;
   salvarAtividade: (dados: DadosAtividade, concluida?: boolean) => Promise<void>;
   acaoSecundaria?: (salvando: boolean) => ReactNode;
@@ -69,8 +69,10 @@ export function FormularioAtividade({
   const [titulo, setTitulo] = useState(valoresIniciais.titulo ?? '');
   const [tipo, setTipo] = useState<TipoAtividade | undefined>(valoresIniciais.tipo);
   const [disciplinaSelecionada, setDisciplinaSelecionada] = useState(valoresIniciais.disciplina_id);
-  const [data, setData] = useState(valoresIniciais.data);
-  const [horario, setHorario] = useState(valoresIniciais.horario?.slice(0, 5) ?? '');
+  const dataInicial = valoresIniciais.data;
+  const horarioInicial = valoresIniciais.horario?.slice(0, 5) ?? '';
+  const [data, setData] = useState(dataInicial);
+  const [horario, setHorario] = useState(horarioInicial);
   const [descricao, setDescricao] = useState(valoresIniciais.descricao ?? '');
   const [concluida, setConcluida] = useState(conclusaoInicial);
   const [seletor, setSeletor] = useState<Seletor>();
@@ -78,6 +80,15 @@ export function FormularioAtividade({
   const [erroSalvar, setErroSalvar] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const salvandoRef = useRef(false);
+
+  useEffect(() => {
+    setData(dataInicial);
+    setHorario(horarioInicial);
+  }, [dataInicial, horarioInicial]);
+
+  useEffect(() => {
+    setConcluida(conclusaoInicial);
+  }, [conclusaoInicial]);
 
   useEffect(() => {
     let ativo = true;
@@ -105,7 +116,7 @@ export function FormularioAtividade({
     : [];
   const disciplina = opcoesDisciplina.find((item) => item.valor === disciplinaSelecionada);
   const tipoVisual = tipo ? visualTipo[tipo] : undefined;
-  const horarioInvalido = horario !== '' && !horarioValido(horario);
+  const horarioInvalido = !horarioValido(horario);
 
   function alterarHorario(texto: string) {
     const digitos = texto.replace(/\D/g, '').slice(0, 4);
@@ -218,7 +229,7 @@ export function FormularioAtividade({
               </View>
               <View style={styles.campoPrazo}>
                 <CampoTexto
-                  rotulo="Horário (opcional)"
+                  rotulo="Horário"
                   placeholder="HH:MM"
                   icone="clock"
                   corIcone={cores.roxo}
@@ -227,7 +238,7 @@ export function FormularioAtividade({
                   value={horario}
                   onChangeText={alterarHorario}
                   editable={!salvando}
-                  erro={validar && horarioInvalido ? 'Informe um horário válido.' : undefined}
+                  erro={validar && horarioInvalido ? 'Informe um horário em HH:MM.' : undefined}
                 />
               </View>
             </View>

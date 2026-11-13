@@ -11,6 +11,7 @@ import { FichaAtividade } from '../components/atividades/FichaAtividade';
 import { FiltroStatusAtividades } from '../components/atividades/FiltroStatusAtividades';
 import { definirConclusaoAtividade, listarAtividadesDisciplina } from '../database/atividades';
 import { buscarDisciplina } from '../database/disciplinas';
+import { atualizarLembretes, observarAtividadesDosLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 
 import type { Atividade } from '../database/atividades';
@@ -58,8 +59,25 @@ export function DetalhesDisciplinaScreen({
           if (ativo) setEstado('erro');
         },
       );
+      const pararObservacao = observarAtividadesDosLembretes((conta, atividade) => {
+        if (conta !== usuarioId || atividade.disciplina_id !== disciplinaId) return;
+        setEstado((atual) => {
+          if (!atual || typeof atual === 'string') return atual;
+          const atividades = atual.atividades.map((item) =>
+            item.id === atividade.id ? { ...item, ...atividade } : item,
+          );
+          atividades.sort(
+            (a, b) =>
+              a.data.localeCompare(b.data) ||
+              (a.horario ?? '24:00').localeCompare(b.horario ?? '24:00') ||
+              a.id.localeCompare(b.id),
+          );
+          return { ...atual, atividades };
+        });
+      });
       return () => {
         ativo = false;
+        pararObservacao();
       };
     }, [usuarioId, disciplinaId, tentativa]),
   );
@@ -84,6 +102,7 @@ export function DetalhesDisciplinaScreen({
     setErroConclusao(undefined);
     try {
       await definirConclusaoAtividade(usuarioId, atividade.id, concluida);
+      atualizarLembretes(usuarioId);
       setEstado((atual) => {
         if (!atual || typeof atual === 'string') return atual;
         return {

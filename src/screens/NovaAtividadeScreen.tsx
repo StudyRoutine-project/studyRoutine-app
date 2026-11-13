@@ -1,5 +1,6 @@
 import { FormularioAtividade } from '../components/atividades/FormularioAtividade';
 import { cadastrarAtividade } from '../database/atividades';
+import { atualizarLembretes } from '../services/lembretes';
 
 type Props = {
   usuarioId: string;
@@ -15,7 +16,10 @@ export function NovaAtividadeScreen({ usuarioId, disciplinaId, voltar, concluir 
       tituloTela="Nova atividade"
       subtitulo="Organize o que você precisa fazer."
       valoresIniciais={{ disciplina_id: disciplinaId }}
-      salvarAtividade={(dados) => cadastrarAtividade(usuarioId, dados)}
+      salvarAtividade={async (dados) => {
+        await cadastrarAtividade(usuarioId, dados);
+        atualizarLembretes(usuarioId);
+      }}
       voltar={voltar}
       concluir={concluir}
     />

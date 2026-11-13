@@ -9,6 +9,7 @@ import { AcaoExcluirRegistro } from '../components/AcaoExcluirRegistro';
 import { FormularioDisciplina } from '../components/disciplinas/FormularioDisciplina';
 import { LayoutInterno } from '../components/LayoutInterno';
 import { buscarDisciplina, editarDisciplina, excluirDisciplina } from '../database/disciplinas';
+import { atualizarLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 
 import type { Disciplina } from '../database/disciplinas';
@@ -54,7 +55,10 @@ export function EditarDisciplinaScreen({
       <FormularioDisciplina
         titulo="Editar disciplina"
         valoresIniciais={estado}
-        salvarDisciplina={(dados) => editarDisciplina(usuarioId, disciplinaId, dados)}
+        salvarDisciplina={async (dados) => {
+          await editarDisciplina(usuarioId, disciplinaId, dados);
+          if (dados.nome.trim() !== estado.nome) atualizarLembretes(usuarioId);
+        }}
         voltar={voltar}
         concluir={concluir}
         acaoSecundaria={(salvando) => (
@@ -62,7 +66,10 @@ export function EditarDisciplinaScreen({
             entidade="disciplina"
             nome={estado.nome}
             desativada={salvando}
-            excluir={() => excluirDisciplina(usuarioId, disciplinaId)}
+            excluir={async () => {
+              await excluirDisciplina(usuarioId, disciplinaId);
+              atualizarLembretes(usuarioId);
+            }}
             concluir={concluirExclusao}
           />
         )}

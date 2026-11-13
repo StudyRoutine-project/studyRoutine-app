@@ -1,6 +1,8 @@
+import { useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Platform, StyleSheet, View } from 'react-native';
 
 import { useSessao } from '../hooks/useSessao';
 import { CadastroScreen } from '../screens/CadastroScreen';
@@ -13,10 +15,20 @@ import { NovaDisciplinaScreen } from '../screens/NovaDisciplinaScreen';
 import { PerfilScreen } from '../screens/PerfilScreen';
 import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScreen';
 import { VerificarCodigoScreen } from '../screens/VerificarCodigoScreen';
+import {
+  acaoAdiarLembrete,
+  acaoConcluirLembrete,
+  aplicarAcaoDoLembrete,
+  atividadeDoLembrete,
+  cancelarLembretes,
+  restaurarLembretes,
+} from '../services/lembretes';
 import { cores } from '../theme/cores';
 import { AbasNavigator } from './AbasNavigator';
 
+import type { NavigationContainerRef } from '@react-navigation/native';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { NotificationResponse } from 'expo-notifications';
 import type { AvisoConta, FinalidadeCodigo } from '../services/autenticacao';
 
 type Rotas = {
@@ -37,9 +49,84 @@ const Stack = createNativeStackNavigator<Rotas>();
 
 export function RootNavigator({ client }: { client: SupabaseClient }) {
   const usuario = useSessao(client);
+  const navigation = useNavigation<NavigationContainerRef<Rotas>>();
   const [aviso, setAviso] = useState<AvisoConta | null>(null);
   const nome = usuario?.user_metadata.nome;
   const nomeUsuario = typeof nome === 'string' ? nome.trim() : '';
+  const usuarioId = usuario?.id;
+
+  useEffect(() => {
+    if (!usuarioId) return;
+
+    void restaurarLembretes(usuarioId).catch(() => {});
+    return () => {
+      void cancelarLembretes(usuarioId).catch(() => {});
+    };
+  }, [usuarioId]);
+
+  useEffect(() => {
+    if (!usuarioId || (Platform.OS !== 'android' && Platform.OS !== 'ios')) return;
+
+    const contaId = usuarioId;
+    let respostaPendente: NotificationResponse | undefined;
+    let ultimaResposta: string | undefined;
+
+    function tratarRespostaPendente() {
+      if (
+        !respostaPendente ||
+        !navigation.isReady() ||
+        (AppState.currentState && AppState.currentState !== 'active')
+      ) return;
+
+      const resposta = respostaPendente;
+      respostaPendente = undefined;
+      Notifications.clearLastNotificationResponse();
+
+      const atividadeId = atividadeDoLembrete(resposta, contaId);
+      if (!atividadeId) return;
+
+      navigation.navigate('EditarAtividade', { atividadeId });
+    }
+
+    function receberResposta(resposta: NotificationResponse) {
+      const { date, request } = resposta.notification;
+      const chave = `${request.identifier}/${date}/${resposta.actionIdentifier}`;
+      if (chave === ultimaResposta) return;
+
+      ultimaResposta = chave;
+      if (
+        resposta.actionIdentifier === acaoAdiarLembrete ||
+        resposta.actionIdentifier === acaoConcluirLembrete
+      ) {
+        Notifications.clearLastNotificationResponse();
+        void aplicarAcaoDoLembrete(contaId, resposta).catch(() => {
+          Alert.alert('Lembretes', 'Não foi possível aplicar a ação. Confira a atividade no app.');
+        });
+      } else if (resposta.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+        respostaPendente = resposta;
+        tratarRespostaPendente();
+      }
+    }
+
+    function lerUltimaResposta() {
+      const resposta = Notifications.getLastNotificationResponse();
+      if (resposta) receberResposta(resposta);
+      tratarRespostaPendente();
+    }
+
+    const removerPronto = navigation.addListener('ready', tratarRespostaPendente);
+    const assinatura = Notifications.addNotificationResponseReceivedListener(receberResposta);
+    const estadoApp = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') lerUltimaResposta();
+    });
+    lerUltimaResposta();
+
+    return () => {
+      assinatura.remove();
+      estadoApp.remove();
+      removerPronto();
+    };
+  }, [navigation, usuarioId]);
 
   if (usuario === undefined) {
     return (
@@ -98,6 +185,7 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
           <Stack.Screen name="EditarAtividade">
             {({ navigation, route }) => (
               <EditarAtividadeScreen
+                key={route.params.atividadeId}
                 usuarioId={usuario.id}
                 atividadeId={route.params.atividadeId}
                 voltar={() => navigation.goBack()}
@@ -111,6 +199,7 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
             {({ navigation }) => (
               <PerfilScreen
                 client={client}
+                usuarioId={usuario.id}
                 nome={nomeUsuario}
                 email={usuario.email}
                 voltar={() => navigation.goBack()}

@@ -76,6 +76,14 @@ async function prepararBanco() {
         `);
       });
     }
+    if (versao && versao.user_version < 3) {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync(`
+          ALTER TABLE atividades ADD COLUMN adiada INTEGER NOT NULL DEFAULT 0;
+          PRAGMA user_version = 3;
+        `);
+      });
+    }
     await db.execAsync('PRAGMA foreign_keys = ON');
     return db;
   } catch (erro) {

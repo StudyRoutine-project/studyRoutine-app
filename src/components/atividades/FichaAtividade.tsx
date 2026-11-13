@@ -54,6 +54,7 @@ export function FichaAtividade({
               <Feather name="calendar" size={13} color={cores.roxo} aria-hidden />
               <Text style={styles.data}>
                 {formatarPrazoResumido(atividade.data, atividade.horario)}
+                {atividade.adiada === 1 && !concluida ? ' · Adiado' : ''}
               </Text>
             </View>
           </View>
