@@ -17,7 +17,8 @@ import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScree
 import { VerificarCodigoScreen } from '../screens/VerificarCodigoScreen';
 import {
   acaoAdiarLembrete,
-  adiarLembrete,
+  acaoConcluirLembrete,
+  aplicarAcaoDoLembrete,
   atividadeDoLembrete,
   cancelarLembretes,
   restaurarLembretes,
@@ -84,13 +85,7 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
       const atividadeId = atividadeDoLembrete(resposta, contaId);
       if (!atividadeId) return;
 
-      if (resposta.actionIdentifier === acaoAdiarLembrete) {
-        void adiarLembrete(contaId, resposta).catch(() => {
-          Alert.alert('Lembretes', 'Não foi possível adiar este lembrete.');
-        });
-      } else if (resposta.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
-        navigation.navigate('EditarAtividade', { atividadeId });
-      }
+      navigation.navigate('EditarAtividade', { atividadeId });
     }
 
     function receberResposta(resposta: NotificationResponse) {
@@ -99,8 +94,18 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
       if (chave === ultimaResposta) return;
 
       ultimaResposta = chave;
-      respostaPendente = resposta;
-      tratarRespostaPendente();
+      if (
+        resposta.actionIdentifier === acaoAdiarLembrete ||
+        resposta.actionIdentifier === acaoConcluirLembrete
+      ) {
+        Notifications.clearLastNotificationResponse();
+        void aplicarAcaoDoLembrete(contaId, resposta).catch(() => {
+          Alert.alert('Lembretes', 'Não foi possível aplicar a ação. Confira a atividade no app.');
+        });
+      } else if (resposta.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+        respostaPendente = resposta;
+        tratarRespostaPendente();
+      }
     }
 
     function lerUltimaResposta() {

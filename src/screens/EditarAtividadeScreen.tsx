@@ -8,7 +8,7 @@ import { LayoutInterno } from '../components/LayoutInterno';
 import { MensagemErro } from '../components/MensagemErro';
 import { FormularioAtividade } from '../components/atividades/FormularioAtividade';
 import { buscarAtividade, editarAtividade, excluirAtividade } from '../database/atividades';
-import { atualizarLembretes } from '../services/lembretes';
+import { atualizarLembretes, observarAtividadesDosLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 
 import type { Atividade } from '../database/atividades';
@@ -20,7 +20,12 @@ type Props = {
   concluir: () => void;
 };
 
-export function EditarAtividadeScreen({ usuarioId, atividadeId, voltar, concluir }: Props) {
+export function EditarAtividadeScreen({
+  usuarioId,
+  atividadeId,
+  voltar,
+  concluir,
+}: Props) {
   const [estado, setEstado] = useState<Atividade | 'carregando' | 'erro' | null>('carregando');
   const [tentativa, setTentativa] = useState(0);
 
@@ -35,8 +40,13 @@ export function EditarAtividadeScreen({ usuarioId, atividadeId, voltar, concluir
         if (ativo) setEstado('erro');
       },
     );
+    const pararObservacao = observarAtividadesDosLembretes((conta, atividade) => {
+      if (conta !== usuarioId || atividade.id !== atividadeId) return;
+      setEstado((atual) => (atual && typeof atual === 'object' ? { ...atual, ...atividade } : atual));
+    });
     return () => {
       ativo = false;
+      pararObservacao();
     };
   }, [usuarioId, atividadeId, tentativa]);
 

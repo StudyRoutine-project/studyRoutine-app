@@ -3,7 +3,12 @@ import { isRunningInExpoGo } from 'expo';
 import * as Notifications from 'expo-notifications';
 import { Alert, Platform } from 'react-native';
 
-import { listarAtividadesParaLembretes } from '../database/atividades';
+import {
+  alterarPrazoAtividade,
+  buscarAtividade,
+  definirConclusaoAtividade,
+  listarAtividadesParaLembretes,
+} from '../database/atividades';
 import { formatarPrazoResumido } from '../utils/datas';
 
 import type {
@@ -12,11 +17,17 @@ import type {
   NotificationRequestInput,
   NotificationResponse,
 } from 'expo-notifications';
+import type { Atividade } from '../database/atividades';
 
-const canal = Platform.OS === 'android' && !isRunningInExpoGo() ? 'lembretes' : undefined;
+type AlteracaoAtividade = Pick<Atividade, 'id' | 'disciplina_id' | 'data' | 'horario' | 'concluida' | 'adiada'>;
+
+const androidNoExpoGo = Platform.OS === 'android' && isRunningInExpoGo();
+const canal = Platform.OS === 'android' && !androidNoExpoGo ? 'lembretes' : undefined;
 const categoriaLembretes = 'lembretes';
 export const acaoAdiarLembrete = 'adiarLembrete';
+export const acaoConcluirLembrete = 'concluirLembrete';
 let operacao: Promise<unknown> = Promise.resolve();
+const observadores = new Set<(usuarioId: string, atividade: AlteracaoAtividade) => void>();
 
 Notifications.setNotificationHandler({
   handleNotification: async ({ request }) => {
@@ -60,9 +71,9 @@ async function canalBloqueado() {
 async function solicitarPermissaoLembretes() {
   const configuracao = canal
     ? await Notifications.setNotificationChannelAsync(canal, {
-        name: 'Lembretes de atividades',
-        importance: Notifications.AndroidImportance.DEFAULT,
-      })
+      name: 'Lembretes de atividades',
+      importance: Notifications.AndroidImportance.DEFAULT,
+    })
     : null;
 
   let permissao = await Notifications.getPermissionsAsync();
@@ -86,6 +97,15 @@ async function limparAgendamentos(usuarioId: string) {
       await Notifications.cancelScheduledNotificationAsync(identifier);
     }
   }
+}
+
+export function observarAtividadesDosLembretes(
+  observar: (usuarioId: string, atividade: AlteracaoAtividade) => void,
+) {
+  observadores.add(observar);
+  return () => {
+    observadores.delete(observar);
+  };
 }
 
 async function prepararAgendamentos(usuarioId: string) {
@@ -120,6 +140,20 @@ async function prepararAgendamentos(usuarioId: string) {
 async function sincronizarAgendamentos(usuarioId: string) {
   const previstos = await prepararAgendamentos(usuarioId);
   const prefixo = prefixoLembrete(usuarioId);
+  if (previstos.size > 0) {
+    await Notifications.setNotificationCategoryAsync(categoriaLembretes, [
+      {
+        identifier: acaoAdiarLembrete,
+        buttonTitle: 'Lembrar em 10 min',
+        options: { opensAppToForeground: !androidNoExpoGo },
+      },
+      {
+        identifier: acaoConcluirLembrete,
+        buttonTitle: 'Concluir',
+        options: { opensAppToForeground: !androidNoExpoGo },
+      },
+    ]);
+  }
 
   for (const aviso of await Notifications.getAllScheduledNotificationsAsync()) {
     if (!aviso.identifier.startsWith(prefixo)) continue;
@@ -138,18 +172,7 @@ async function sincronizarAgendamentos(usuarioId: string) {
     }
   }
 
-  const novosAvisos = [...previstos.values()].filter(({ trigger }) => Number(trigger.date) > Date.now());
-  if (novosAvisos.length === 0) return;
-
-  await Notifications.setNotificationCategoryAsync(categoriaLembretes, [
-    {
-      identifier: acaoAdiarLembrete,
-      buttonTitle: 'Lembrar em 10 min',
-      options: { opensAppToForeground: true },
-    },
-  ]);
-
-  for (const aviso of novosAvisos) {
+  for (const aviso of previstos.values()) {
     if (Number(aviso.trigger.date) > Date.now()) {
       await Notifications.scheduleNotificationAsync(aviso);
     }
@@ -170,22 +193,49 @@ export function atividadeDoLembrete(resposta: NotificationResponse, usuarioId: s
   }
 }
 
-export function adiarLembrete(usuarioId: string, resposta: NotificationResponse) {
+export function aplicarAcaoDoLembrete(usuarioId: string, resposta: NotificationResponse) {
   return enfileirar(async () => {
+    const atividadeId = atividadeDoLembrete(resposta, usuarioId);
+    if (!atividadeId) return;
+
     const { identifier, content } = resposta.notification.request;
-    if (!atividadeDoLembrete(resposta, usuarioId)) return;
+    const atividade = await buscarAtividade(usuarioId, atividadeId);
+    if (!atividade?.horario || atividade.concluida) return;
 
-    const { ativados } = await lerEstadoLembretes(usuarioId);
-    if (!ativados) return;
+    const horario = atividade.horario.slice(0, 5);
+    const prazo = new Date(`${atividade.data}T${horario}:00`).getTime();
+    if (prazo !== content.data?.prazo) return;
 
-    const previsto = (await prepararAgendamentos(usuarioId)).get(identifier);
-    if (!previsto || previsto.content.data?.prazo !== content.data?.prazo) return;
+    let alteracao: AlteracaoAtividade;
+    if (resposta.actionIdentifier === acaoConcluirLembrete) {
+      await definirConclusaoAtividade(usuarioId, atividadeId, true);
+      alteracao = { ...atividade, concluida: 1 };
+    } else if (resposta.actionIdentifier === acaoAdiarLembrete) {
+      const { ativados } = await lerEstadoLembretes(usuarioId);
+      if (!ativados) return;
 
-    await Notifications.scheduleNotificationAsync({
-      ...previsto,
-      trigger: { ...previsto.trigger, date: Date.now() + 10 * 60 * 1000 },
-    });
-    await Notifications.dismissNotificationAsync(identifier).catch(() => {});
+      const minuto = 60 * 1000;
+      const momento = new Date((Math.ceil(Date.now() / minuto) + 10) * minuto);
+      const ano = momento.getFullYear();
+      const mes = String(momento.getMonth() + 1).padStart(2, '0');
+      const dia = String(momento.getDate()).padStart(2, '0');
+      const novoPrazo = {
+        data: `${ano}-${mes}-${dia}`,
+        horario: momento.toTimeString().slice(0, 5),
+      };
+      if (!(await alterarPrazoAtividade(usuarioId, atividade, novoPrazo))) return;
+      alteracao = { ...atividade, ...novoPrazo, adiada: 1 };
+    } else {
+      return;
+    }
+
+    for (const observar of observadores) observar(usuarioId, alteracao);
+    await Notifications.dismissNotificationAsync(identifier).catch(() => { });
+    if (alteracao.concluida) {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } else {
+      await sincronizarAgendamentos(usuarioId);
+    }
   });
 }
 
@@ -219,7 +269,7 @@ export function configurarLembretes(usuarioId: string, ativar: boolean) {
       await AsyncStorage.setItem(chavePreferencia(usuarioId), 'true');
       return true;
     } catch (erro) {
-      await limparAgendamentos(usuarioId).catch(() => {});
+      await limparAgendamentos(usuarioId).catch(() => { });
       throw erro;
     }
   });
