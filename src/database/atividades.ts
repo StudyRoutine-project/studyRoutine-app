@@ -200,3 +200,16 @@ export async function listarAtividadesDisciplina(usuarioId: string, disciplinaId
     disciplinaId,
   );
 }
+
+export async function listarAtividadesParaLembretes(usuarioId: string, aPartirDe: string) {
+  const db = await abrirBanco();
+  return db.getAllAsync<Pick<Atividade, 'id' | 'titulo' | 'data'> & { horario: string }>(
+    `SELECT a.id, a.titulo, a.data, a.horario
+     FROM atividades a JOIN disciplinas d ON d.usuario_id = a.usuario_id AND d.id = a.disciplina_id
+     WHERE a.usuario_id = ? AND a.concluida = 0 AND a.excluida = 0 AND d.excluida = 0
+       AND a.horario IS NOT NULL AND a.data >= ?
+     ORDER BY a.data, a.horario, a.id`,
+    usuarioId,
+    aPartirDe,
+  );
+}

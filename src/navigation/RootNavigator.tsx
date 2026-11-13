@@ -1,5 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useSessao } from '../hooks/useSessao';
@@ -13,6 +13,7 @@ import { NovaDisciplinaScreen } from '../screens/NovaDisciplinaScreen';
 import { PerfilScreen } from '../screens/PerfilScreen';
 import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScreen';
 import { VerificarCodigoScreen } from '../screens/VerificarCodigoScreen';
+import { restaurarLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 import { AbasNavigator } from './AbasNavigator';
 
@@ -40,6 +41,11 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
   const [aviso, setAviso] = useState<AvisoConta | null>(null);
   const nome = usuario?.user_metadata.nome;
   const nomeUsuario = typeof nome === 'string' ? nome.trim() : '';
+  const usuarioId = usuario?.id;
+
+  useEffect(() => {
+    if (usuarioId) void restaurarLembretes(usuarioId).catch(() => {});
+  }, [usuarioId]);
 
   if (usuario === undefined) {
     return (
@@ -111,6 +117,7 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
             {({ navigation }) => (
               <PerfilScreen
                 client={client}
+                usuarioId={usuario.id}
                 nome={nomeUsuario}
                 email={usuario.email}
                 voltar={() => navigation.goBack()}

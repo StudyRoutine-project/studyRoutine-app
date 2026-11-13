@@ -1,24 +1,30 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AvatarIniciais } from '../components/AvatarIniciais';
 import { BotaoVoltar } from '../components/BotaoVoltar';
 import { CabecalhoMarca } from '../components/CabecalhoMarca';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { MensagemErro } from '../components/MensagemErro';
+import { useLembretes } from '../hooks/useLembretes';
+import { cancelarLembretes, restaurarLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type Props = {
   client: SupabaseClient;
+  usuarioId: string;
   nome: string;
   email?: string;
   voltar: () => void;
 };
 
-export function PerfilScreen({ client, nome, email, voltar }: Props) {
+export function PerfilScreen({ client, usuarioId, nome, email, voltar }: Props) {
+  const lembretes = useLembretes(usuarioId);
+  const [erroAjustes, setErroAjustes] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [saindo, setSaindo] = useState(false);
   const [erro, setErro] = useState(false);
@@ -30,17 +36,28 @@ export function PerfilScreen({ client, nome, email, voltar }: Props) {
     setErro(false);
   }
 
+  async function abrirAjustes() {
+    setErroAjustes(false);
+    try {
+      await Linking.openSettings();
+    } catch {
+      setErroAjustes(true);
+    }
+  }
+
   async function sair() {
-    if (saindoRef.current) return;
+    if (saindoRef.current || lembretes.alterando) return;
 
     saindoRef.current = true;
     setSaindo(true);
     setErro(false);
     try {
+      await cancelarLembretes(usuarioId);
       const { error } = await client.auth.signOut({ scope: 'local' });
-      setErro(Boolean(error));
-      if (!error) setConfirmandoSaida(false);
+      if (error) throw error;
+      setConfirmandoSaida(false);
     } catch {
+      await restaurarLembretes(usuarioId).catch(() => {});
       setErro(true);
     } finally {
       saindoRef.current = false;
@@ -67,18 +84,51 @@ export function PerfilScreen({ client, nome, email, voltar }: Props) {
             <Text accessibilityRole="header" style={styles.subtitulo}>
               Lembretes
             </Text>
-            <Text style={styles.descricao}>Receba avisos sobre as atividades agendadas.</Text>
+            <Text style={styles.descricao}>
+              Receba avisos das atividades agendadas.
+            </Text>
             <View style={styles.lembretes}>
               <Feather name="bell" color={cores.roxo} size={22} aria-hidden />
               <Text style={styles.rotuloLembretes}>Ativar lembretes</Text>
-              <Switch accessibilityLabel="Ativar lembretes" disabled value={false} />
+              <Switch
+                accessibilityLabel="Ativar lembretes"
+                disabled={!lembretes.estado || lembretes.alterando || saindo}
+                onValueChange={lembretes.alterar}
+                trackColor={{ false: cores.borda, true: cores.roxo }}
+                value={lembretes.ativados}
+              />
             </View>
+            {lembretes.estado?.bloqueados && (
+              <>
+                <Text style={styles.descricao}>
+                  Permita as notificações nos ajustes do aparelho para receber os lembretes.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={abrirAjustes}
+                  style={({ pressed }) => [styles.acaoLembretes, pressed && styles.pressionado]}
+                >
+                  <Text style={styles.textoAcao}>Abrir ajustes</Text>
+                </Pressable>
+                {erroAjustes && <MensagemErro mensagem="Não foi possível abrir os ajustes." />}
+              </>
+            )}
+            {lembretes.erro && <MensagemErro mensagem={lembretes.erro} />}
+            {!lembretes.estado && lembretes.erro && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={lembretes.tentarNovamente}
+                style={({ pressed }) => [styles.acaoLembretes, pressed && styles.pressionado]}
+              >
+                <Text style={styles.textoAcao}>Tentar de novo</Text>
+              </Pressable>
+            )}
           </View>
 
           <Pressable
             accessibilityRole="button"
-            accessibilityState={{ busy: saindo, disabled: saindo }}
-            disabled={saindo}
+            accessibilityState={{ busy: saindo, disabled: saindo || lembretes.alterando }}
+            disabled={saindo || lembretes.alterando}
             onPress={() => setConfirmandoSaida(true)}
             style={({ pressed }) => [styles.sair, pressed && styles.pressionado]}
           >
@@ -137,6 +187,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   rotuloLembretes: { flex: 1, color: cores.texto, fontSize: 15, fontWeight: '600' },
+  acaoLembretes: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
+  textoAcao: { color: cores.roxo, fontSize: 15, fontWeight: '600' },
   sair: {
     flexDirection: 'row',
     alignItems: 'center',
