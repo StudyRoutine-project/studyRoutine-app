@@ -242,6 +242,17 @@ export async function listarAtividadesDisciplina(usuarioId: string, disciplinaId
   );
 }
 
+export async function listarAtividades(usuarioId: string) {
+  const db = await abrirBanco();
+  return db.getAllAsync<Atividade>(
+    `SELECT a.*
+     FROM atividades a JOIN disciplinas d ON d.usuario_id = a.usuario_id AND d.id = a.disciplina_id
+     WHERE a.usuario_id = ? AND a.excluida = 0 AND d.excluida = 0
+     ORDER BY a.data, a.horario IS NULL, a.horario, a.id`,
+    usuarioId,
+  );
+}
+
 export async function listarAtividadesParaLembretes(usuarioId: string) {
   const db = await abrirBanco();
   return db.getAllAsync<

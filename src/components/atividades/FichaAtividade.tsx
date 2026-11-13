@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { cores } from '../../theme/cores';
-import { formatarPrazoResumido } from '../../utils/datas';
+import { formatarPrazoResumido, prazoVencido } from '../../utils/datas';
 import { CheckboxAtividade } from './CheckboxAtividade';
 import { visualTipo } from './tiposAtividade';
 
@@ -10,6 +10,8 @@ import type { Atividade } from '../../database/atividades';
 
 type Props = {
   atividade: Atividade;
+  disciplina?: string;
+  agora: number;
   onPress: () => void;
   onAlterarConclusao: () => void;
   salvando: boolean;
@@ -18,6 +20,8 @@ type Props = {
 
 export function FichaAtividade({
   atividade,
+  disciplina,
+  agora,
   onPress,
   onAlterarConclusao,
   salvando,
@@ -25,6 +29,11 @@ export function FichaAtividade({
 }: Props) {
   const tipo = visualTipo[atividade.tipo];
   const concluida = atividade.concluida === 1;
+  const atrasada = !concluida && prazoVencido(atividade.data, atividade.horario, agora);
+  const adiada = !concluida && atividade.adiada === 1;
+  const estadoPrazo = atrasada ? 'Em atraso' : adiada ? 'Adiado' : undefined;
+  const iconePrazo = atrasada ? 'alert-triangle' : adiada ? 'clock' : 'calendar';
+  const corPrazo = atrasada ? cores.erro : adiada ? cores.aviso : cores.secundario;
 
   return (
     <View style={[styles.ficha, concluida && styles.fichaConcluida]}>
@@ -46,17 +55,17 @@ export function FichaAtividade({
           <Text style={[styles.titulo, concluida && styles.tituloConcluido]}>
             {atividade.titulo}
           </Text>
-          <View style={styles.metadados}>
-            <Text style={[styles.tipo, { color: concluida ? cores.secundario : tipo.cor }]}>
-              {tipo.rotulo}
+          <Text style={[styles.tipo, { color: concluida ? cores.secundario : tipo.cor }]}>
+            {disciplina ? [disciplina, tipo.rotulo].join(' · ') : tipo.rotulo}
+          </Text>
+          <View style={styles.prazo}>
+            <Feather name={iconePrazo} size={14} color={corPrazo} aria-hidden />
+            <Text style={styles.data}>
+              {estadoPrazo && (
+                <Text style={[styles.estadoPrazo, { color: corPrazo }]}>{estadoPrazo} · </Text>
+              )}
+              {formatarPrazoResumido(atividade.data, atividade.horario)}
             </Text>
-            <View style={styles.prazo}>
-              <Feather name="calendar" size={13} color={cores.roxo} aria-hidden />
-              <Text style={styles.data}>
-                {formatarPrazoResumido(atividade.data, atividade.horario)}
-                {atividade.adiada === 1 && !concluida ? ' · Adiado' : ''}
-              </Text>
-            </View>
           </View>
         </View>
       </Pressable>
@@ -103,17 +112,8 @@ const styles = StyleSheet.create({
   dados: { flex: 1, gap: 5 },
   titulo: { color: cores.texto, fontSize: 17, fontWeight: '700' },
   tituloConcluido: { color: cores.secundario, textDecorationLine: 'line-through' },
-  metadados: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-  tipo: { fontSize: 13, fontWeight: '600' },
-  prazo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-    gap: 5,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: cores.fundoAviso,
-  },
-  data: { flexShrink: 1, color: cores.roxo, fontSize: 12, fontVariant: ['tabular-nums'] },
+  tipo: { flexShrink: 1, fontSize: 13, fontWeight: '600' },
+  prazo: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  estadoPrazo: { fontWeight: '600' },
+  data: { flexShrink: 1, color: cores.secundario, fontSize: 12, fontVariant: ['tabular-nums'] },
 });

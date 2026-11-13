@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { AcaoEditar } from '../components/AcaoEditar';
@@ -9,10 +9,13 @@ import { LayoutInterno, TituloTela } from '../components/LayoutInterno';
 import { MensagemErro } from '../components/MensagemErro';
 import { FichaAtividade } from '../components/atividades/FichaAtividade';
 import { FiltroStatusAtividades } from '../components/atividades/FiltroStatusAtividades';
-import { definirConclusaoAtividade, listarAtividadesDisciplina } from '../database/atividades';
+import { listarAtividadesDisciplina } from '../database/atividades';
 import { buscarDisciplina } from '../database/disciplinas';
-import { atualizarLembretes, observarAtividadesDosLembretes } from '../services/lembretes';
+import { useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
+import { useHorarioAtual } from '../hooks/useHorarioAtual';
+import { observarAtividadesDosLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
+import { prazoVencido } from '../utils/datas';
 
 import type { Atividade } from '../database/atividades';
 import type { Disciplina } from '../database/disciplinas';
@@ -39,10 +42,23 @@ export function DetalhesDisciplinaScreen({
 }: Props) {
   const [estado, setEstado] = useState<Estado>('carregando');
   const [tentativa, setTentativa] = useState(0);
-  const [atividadeSalvando, setAtividadeSalvando] = useState<string>();
-  const [erroConclusao, setErroConclusao] = useState<string>();
   const [filtro, setFiltro] = useState<StatusAtividades>('todas');
-  const salvandoRef = useRef(false);
+  const agora = useHorarioAtual();
+  const { alterarConclusao, atividadeSalvando, erroConclusao } = useConclusaoAtividade(
+    usuarioId,
+    (id, concluida) => {
+      setEstado((atual) => {
+        if (!atual || typeof atual === 'string') return atual;
+
+        return {
+          ...atual,
+          atividades: atual.atividades.map((item) =>
+            item.id === id ? { ...item, concluida } : item,
+          ),
+        };
+      });
+    },
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -83,48 +99,37 @@ export function DetalhesDisciplinaScreen({
   );
 
   const lista = estado && typeof estado === 'object' ? estado : null;
-  const temAtividades = Boolean(lista?.atividades.length);
-  const concluidas = lista?.atividades.filter((item) => item.concluida === 1).length ?? 0;
-  const contagens = {
-    todas: lista?.atividades.length ?? 0,
-    pendentes: (lista?.atividades.length ?? 0) - concluidas,
-    concluidas,
-  };
-  const atividadesVisiveis = lista?.atividades.filter(
-    (item) => filtro === 'todas' || item.concluida === (filtro === 'concluidas' ? 1 : 0),
-  );
-
-  async function alterarConclusao(atividade: Atividade) {
-    if (salvandoRef.current) return;
-    const concluida = atividade.concluida === 0;
-    salvandoRef.current = true;
-    setAtividadeSalvando(atividade.id);
-    setErroConclusao(undefined);
-    try {
-      await definirConclusaoAtividade(usuarioId, atividade.id, concluida);
-      atualizarLembretes(usuarioId);
-      setEstado((atual) => {
-        if (!atual || typeof atual === 'string') return atual;
-        return {
-          ...atual,
-          atividades: atual.atividades.map((item) =>
-            item.id === atividade.id ? { ...item, concluida: concluida ? 1 : 0 } : item,
-          ),
-        };
-      });
-    } catch {
-      setErroConclusao(atividade.id);
-    } finally {
-      salvandoRef.current = false;
-      setAtividadeSalvando(undefined);
+  const atividadesPorStatus = useMemo(() => {
+    const grupos: Record<StatusAtividades, Atividade[]> = {
+      todas: lista?.atividades ?? [],
+      pendentes: [],
+      atrasadas: [],
+      concluidas: [],
+    };
+    for (const atividade of grupos.todas) {
+      if (atividade.concluida) {
+        grupos.concluidas.push(atividade);
+      } else if (prazoVencido(atividade.data, atividade.horario, agora)) {
+        grupos.atrasadas.push(atividade);
+      } else {
+        grupos.pendentes.push(atividade);
+      }
     }
-  }
+    return grupos;
+  }, [lista?.atividades, agora]);
+  const temAtividades = atividadesPorStatus.todas.length > 0;
+  const contagens = {
+    todas: atividadesPorStatus.todas.length,
+    pendentes: atividadesPorStatus.pendentes.length,
+    atrasadas: atividadesPorStatus.atrasadas.length,
+    concluidas: atividadesPorStatus.concluidas.length,
+  };
 
   return (
     <LayoutInterno titulo={lista ? undefined : 'Disciplina'} voltar={voltar}>
       {lista ? (
         <FlatList
-          data={atividadesVisiveis}
+          data={atividadesPorStatus[filtro]}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.lista}
           ListHeaderComponent={
@@ -159,7 +164,9 @@ export function DetalhesDisciplinaScreen({
                 mensagem={
                   filtro === 'pendentes'
                     ? 'Nenhuma atividade pendente'
-                    : 'Nenhuma atividade concluída'
+                    : filtro === 'atrasadas'
+                      ? 'Nenhuma atividade atrasada'
+                      : 'Nenhuma atividade concluída'
                 }
               />
             ) : (
@@ -175,6 +182,7 @@ export function DetalhesDisciplinaScreen({
             <View style={styles.item}>
               <FichaAtividade
                 atividade={item}
+                agora={agora}
                 onPress={() => abrirAtividade(item.id)}
                 onAlterarConclusao={() => void alterarConclusao(item)}
                 salvando={atividadeSalvando === item.id}

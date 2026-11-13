@@ -20,6 +20,8 @@ type Props = {
   email?: string;
   abrirPerfil: () => void;
   novaDisciplina: () => void;
+  novaAtividade: () => void;
+  abrirAtividade: (atividadeId: string) => void;
   abrirDisciplina: (disciplinaId: string) => void;
 };
 
@@ -37,6 +39,8 @@ export function AbasNavigator({
   email,
   abrirPerfil,
   novaDisciplina,
+  novaAtividade,
+  abrirAtividade,
   abrirDisciplina,
 }: Props) {
   const acaoPerfil = (
@@ -65,7 +69,16 @@ export function AbasNavigator({
       })}
     >
       <Tab.Screen name="Inicio" options={{ title: 'Início' }}>
-        {() => <InicioScreen nome={nome} email={email} acaoPerfil={acaoPerfil} />}
+        {() => (
+          <InicioScreen
+            usuarioId={usuarioId}
+            nome={nome}
+            acaoPerfil={acaoPerfil}
+            novaDisciplina={novaDisciplina}
+            novaAtividade={novaAtividade}
+            abrirAtividade={abrirAtividade}
+          />
+        )}
       </Tab.Screen>
       <Tab.Screen name="Disciplinas">
         {() => (

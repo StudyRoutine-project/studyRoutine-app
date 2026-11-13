@@ -40,6 +40,7 @@ export function Botao({
       onPress={onPress}
       style={({ pressed }) => [
         styles.botao,
+        compacto && styles.botaoCompacto,
         sobCursor && !desativado && styles.hover,
         pressed && styles.pressao,
       ]}
@@ -91,6 +92,7 @@ const styles = StyleSheet.create({
       web: { transitionProperty: 'opacity, transform', transitionDuration: '140ms' } as ViewStyle,
     }),
   },
+  botaoCompacto: { borderRadius: 12 },
   hover: {
     opacity: 0.92,
   },
