@@ -1,13 +1,21 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isRunningInExpoGo } from 'expo';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 import { listarAtividadesParaLembretes } from '../database/atividades';
+import { formatarPrazoResumido } from '../utils/datas';
 
-import type { NotificationPermissionsStatus } from 'expo-notifications';
+import type {
+  DateTriggerInput,
+  NotificationPermissionsStatus,
+  NotificationRequestInput,
+  NotificationResponse,
+} from 'expo-notifications';
 
 const canal = Platform.OS === 'android' && !isRunningInExpoGo() ? 'lembretes' : undefined;
+const categoriaLembretes = 'lembretes';
+export const acaoAdiarLembrete = 'adiarLembrete';
 let operacao: Promise<unknown> = Promise.resolve();
 
 Notifications.setNotificationHandler({
@@ -80,27 +88,23 @@ async function limparAgendamentos(usuarioId: string) {
   }
 }
 
-async function agendarPendencias(usuarioId: string) {
-  const agora = new Date();
-  const dia = [
-    agora.getFullYear(),
-    String(agora.getMonth() + 1).padStart(2, '0'),
-    String(agora.getDate()).padStart(2, '0'),
-  ].join('-');
-  const atividades = await listarAtividadesParaLembretes(usuarioId, dia);
+async function prepararAgendamentos(usuarioId: string) {
+  const atividades = await listarAtividadesParaLembretes(usuarioId);
+  const agendamentos = new Map<string, NotificationRequestInput & { trigger: DateTriggerInput }>();
 
   for (const atividade of atividades) {
     const horario = atividade.horario.slice(0, 5);
     const prazo = new Date(`${atividade.data}T${horario}:00`);
-    if (!(prazo.getTime() > Date.now())) continue;
+    const identifier = `${prefixoLembrete(usuarioId)}${atividade.id}`;
 
-    await Notifications.scheduleNotificationAsync({
-      identifier: `${prefixoLembrete(usuarioId)}${atividade.id}`,
+    agendamentos.set(identifier, {
+      identifier,
       content: {
-        title: 'Lembrete de atividade',
-        body: atividade.titulo,
+        title: atividade.titulo,
+        body: `${atividade.disciplina} · ${formatarPrazoResumido(atividade.data, horario)}`,
         sound: 'default',
-        data: { atividadeId: atividade.id, usuarioId },
+        categoryIdentifier: categoriaLembretes,
+        data: { atividadeId: atividade.id, usuarioId, prazo: prazo.getTime() },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -109,6 +113,80 @@ async function agendarPendencias(usuarioId: string) {
       },
     });
   }
+
+  return agendamentos;
+}
+
+async function sincronizarAgendamentos(usuarioId: string) {
+  const previstos = await prepararAgendamentos(usuarioId);
+  const prefixo = prefixoLembrete(usuarioId);
+
+  for (const aviso of await Notifications.getAllScheduledNotificationsAsync()) {
+    if (!aviso.identifier.startsWith(prefixo)) continue;
+
+    const previsto = previstos.get(aviso.identifier);
+    if (
+      previsto &&
+      aviso.content.title === previsto.content.title &&
+      aviso.content.body === previsto.content.body &&
+      aviso.content.categoryIdentifier === previsto.content.categoryIdentifier &&
+      aviso.content.data?.prazo === previsto.content.data?.prazo
+    ) {
+      previstos.delete(aviso.identifier);
+    } else {
+      await Notifications.cancelScheduledNotificationAsync(aviso.identifier);
+    }
+  }
+
+  const novosAvisos = [...previstos.values()].filter(({ trigger }) => Number(trigger.date) > Date.now());
+  if (novosAvisos.length === 0) return;
+
+  await Notifications.setNotificationCategoryAsync(categoriaLembretes, [
+    {
+      identifier: acaoAdiarLembrete,
+      buttonTitle: 'Lembrar em 10 min',
+      options: { opensAppToForeground: true },
+    },
+  ]);
+
+  for (const aviso of novosAvisos) {
+    if (Number(aviso.trigger.date) > Date.now()) {
+      await Notifications.scheduleNotificationAsync(aviso);
+    }
+  }
+}
+
+export function atividadeDoLembrete(resposta: NotificationResponse, usuarioId: string) {
+  const { identifier, content } = resposta.notification.request;
+  const atividadeId = content.data?.atividadeId;
+
+  if (
+    content.data?.usuarioId === usuarioId &&
+    typeof atividadeId === 'string' &&
+    atividadeId.length > 0 &&
+    identifier === `${prefixoLembrete(usuarioId)}${atividadeId}`
+  ) {
+    return atividadeId;
+  }
+}
+
+export function adiarLembrete(usuarioId: string, resposta: NotificationResponse) {
+  return enfileirar(async () => {
+    const { identifier, content } = resposta.notification.request;
+    if (!atividadeDoLembrete(resposta, usuarioId)) return;
+
+    const { ativados } = await lerEstadoLembretes(usuarioId);
+    if (!ativados) return;
+
+    const previsto = (await prepararAgendamentos(usuarioId)).get(identifier);
+    if (!previsto || previsto.content.data?.prazo !== content.data?.prazo) return;
+
+    await Notifications.scheduleNotificationAsync({
+      ...previsto,
+      trigger: { ...previsto.trigger, date: Date.now() + 10 * 60 * 1000 },
+    });
+    await Notifications.dismissNotificationAsync(identifier).catch(() => {});
+  });
 }
 
 export async function lerEstadoLembretes(usuarioId: string, verificarPermissao = false) {
@@ -130,14 +208,14 @@ export function configurarLembretes(usuarioId: string, ativar: boolean) {
   return enfileirar(async () => {
     if (ativar && !(await solicitarPermissaoLembretes())) return false;
 
-    await limparAgendamentos(usuarioId);
     if (!ativar) {
+      await limparAgendamentos(usuarioId);
       await AsyncStorage.setItem(chavePreferencia(usuarioId), 'false');
       return false;
     }
 
     try {
-      await agendarPendencias(usuarioId);
+      await sincronizarAgendamentos(usuarioId);
       await AsyncStorage.setItem(chavePreferencia(usuarioId), 'true');
       return true;
     } catch (erro) {
@@ -150,8 +228,17 @@ export function configurarLembretes(usuarioId: string, ativar: boolean) {
 export function restaurarLembretes(usuarioId: string) {
   return enfileirar(async () => {
     const { ativados } = await lerEstadoLembretes(usuarioId);
-    await limparAgendamentos(usuarioId);
-    if (ativados) await agendarPendencias(usuarioId);
+    if (ativados) {
+      await sincronizarAgendamentos(usuarioId);
+    } else {
+      await limparAgendamentos(usuarioId);
+    }
+  });
+}
+
+export function atualizarLembretes(usuarioId: string) {
+  void restaurarLembretes(usuarioId).catch(() => {
+    Alert.alert('Lembretes', 'Não foi possível atualizar os lembretes. Tente reativá-los no Perfil.');
   });
 }
 

@@ -11,6 +11,7 @@ import { FichaAtividade } from '../components/atividades/FichaAtividade';
 import { FiltroStatusAtividades } from '../components/atividades/FiltroStatusAtividades';
 import { definirConclusaoAtividade, listarAtividadesDisciplina } from '../database/atividades';
 import { buscarDisciplina } from '../database/disciplinas';
+import { atualizarLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 
 import type { Atividade } from '../database/atividades';
@@ -84,6 +85,7 @@ export function DetalhesDisciplinaScreen({
     setErroConclusao(undefined);
     try {
       await definirConclusaoAtividade(usuarioId, atividade.id, concluida);
+      atualizarLembretes(usuarioId);
       setEstado((atual) => {
         if (!atual || typeof atual === 'string') return atual;
         return {

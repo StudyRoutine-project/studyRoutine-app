@@ -8,6 +8,7 @@ import { LayoutInterno } from '../components/LayoutInterno';
 import { MensagemErro } from '../components/MensagemErro';
 import { FormularioAtividade } from '../components/atividades/FormularioAtividade';
 import { buscarAtividade, editarAtividade, excluirAtividade } from '../database/atividades';
+import { atualizarLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 
 import type { Atividade } from '../database/atividades';
@@ -62,9 +63,10 @@ export function EditarAtividadeScreen({ usuarioId, atividadeId, voltar, concluir
       tituloTela="Editar atividade"
       valoresIniciais={estado}
       conclusaoInicial={estado.concluida === 1}
-      salvarAtividade={(dados, concluida) =>
-        editarAtividade(usuarioId, atividadeId, dados, concluida)
-      }
+      salvarAtividade={async (dados, concluida) => {
+        await editarAtividade(usuarioId, atividadeId, dados, concluida);
+        atualizarLembretes(usuarioId);
+      }}
       voltar={voltar}
       concluir={concluir}
       acaoSecundaria={(salvando) => (
@@ -72,7 +74,10 @@ export function EditarAtividadeScreen({ usuarioId, atividadeId, voltar, concluir
           entidade="atividade"
           nome={estado.titulo}
           desativada={salvando}
-          excluir={() => excluirAtividade(usuarioId, atividadeId)}
+          excluir={async () => {
+            await excluirAtividade(usuarioId, atividadeId);
+            atualizarLembretes(usuarioId);
+          }}
           concluir={concluir}
         />
       )}
