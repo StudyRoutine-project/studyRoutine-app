@@ -21,13 +21,28 @@ const coresDisciplina = [
   { nome: 'Laranja', valor: '#CE591F' },
 ];
 
-export function SeletorCorDisciplina({ cor, corOriginal, onChange, desativado }: Props) {
+function distanciaEntreCores(primeira: string, segunda: string) {
+  return [1, 3, 5].reduce((distancia, inicio) => {
+    const a = Number.parseInt(primeira.slice(inicio, inicio + 2), 16);
+    const b = Number.parseInt(segunda.slice(inicio, inicio + 2), 16);
+    return distancia + (a - b) ** 2;
+  }, 0);
+}
+
+export function SeletorCorDisciplina({
+  cor,
+  corOriginal = cores.roxo,
+  onChange,
+  desativado,
+}: Props) {
   const { width } = useWindowDimensions();
-  const opcoes =
-    corOriginal &&
-    !coresDisciplina.some(({ valor }) => valor.toUpperCase() === corOriginal.toUpperCase())
-      ? [{ nome: 'Cor original', valor: corOriginal }, ...coresDisciplina]
-      : coresDisciplina;
+  // Mostra o tom salvo no lugar da cor mais parecida da paleta.
+  const opcaoOriginal = coresDisciplina.reduce((maisProxima, opcao) =>
+    distanciaEntreCores(corOriginal, opcao.valor) <
+    distanciaEntreCores(corOriginal, maisProxima.valor)
+      ? opcao
+      : maisProxima,
+  );
 
   return (
     <View style={styles.seletor}>
@@ -37,11 +52,14 @@ export function SeletorCorDisciplina({ cor, corOriginal, onChange, desativado }:
         accessibilityLabel="Cor da disciplina"
         style={styles.grade}
       >
-        {opcoes.map(({ nome, valor }) => {
+        {coresDisciplina.map((opcao) => {
+          const valor = opcao === opcaoOriginal ? corOriginal : opcao.valor;
           const selecionada = valor.toUpperCase() === cor.toUpperCase();
+          const nome =
+            valor.toUpperCase() === opcao.valor.toUpperCase() ? opcao.nome : 'Cor original';
           return (
             <Pressable
-              key={valor}
+              key={opcao.valor}
               accessibilityRole="radio"
               accessibilityLabel={nome}
               aria-checked={selecionada}

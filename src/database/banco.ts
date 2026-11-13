@@ -49,6 +49,34 @@ async function prepararBanco() {
         `);
       });
     }
+    if (versao && versao.user_version < 2) {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync(`
+          CREATE TABLE atividades (
+            usuario_id TEXT NOT NULL,
+            id TEXT NOT NULL,
+            disciplina_id TEXT NOT NULL,
+            titulo TEXT NOT NULL CHECK (length(trim(titulo)) > 0),
+            tipo TEXT NOT NULL CHECK (tipo IN ('tarefa', 'trabalho', 'prova', 'estudo')),
+            data TEXT NOT NULL,
+            horario TEXT,
+            descricao TEXT,
+            concluida INTEGER NOT NULL DEFAULT 0 CHECK (concluida IN (0, 1)),
+            excluida INTEGER NOT NULL DEFAULT 0 CHECK (excluida IN (0, 1)),
+            criada_em TEXT NOT NULL,
+            atualizada_em TEXT NOT NULL,
+            PRIMARY KEY (usuario_id, id),
+            FOREIGN KEY (usuario_id, disciplina_id) REFERENCES disciplinas (usuario_id, id)
+          );
+
+          CREATE INDEX atividades_disciplina_prazo_idx
+            ON atividades (usuario_id, disciplina_id, excluida, data, horario, id);
+
+          PRAGMA user_version = 2;
+        `);
+      });
+    }
+    await db.execAsync('PRAGMA foreign_keys = ON');
     return db;
   } catch (erro) {
     await db.closeAsync();

@@ -8,4 +8,5 @@ export const cores = {
   roxo: '#5135D9',
   roxoClaro: '#6849EB',
   erro: '#A92342',
+  sucesso: '#207151',
 };

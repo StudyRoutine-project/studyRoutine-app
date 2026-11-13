@@ -1,15 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { cores } from '../../theme/cores';
-import { BotaoVoltar } from '../BotaoVoltar';
-import { CabecalhoMarca } from '../CabecalhoMarca';
+import { cores } from '../theme/cores';
+import { BotaoVoltar } from './BotaoVoltar';
+import { CabecalhoMarca } from './CabecalhoMarca';
 
-import type { ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import type { SafeAreaViewProps } from 'react-native-safe-area-context';
 
 type Props = {
-  titulo: string;
+  titulo?: string;
   subtitulo?: string;
   acaoDireita?: ReactNode;
   voltar?: () => void;
@@ -18,7 +18,7 @@ type Props = {
   children: ReactNode;
 };
 
-export function LayoutDisciplinas({
+export function LayoutInterno({
   titulo,
   subtitulo,
   acaoDireita,
@@ -35,15 +35,34 @@ export function LayoutDisciplinas({
           acao={voltar && <BotaoVoltar onPress={voltar} desativado={voltarDesativado} />}
           acaoDireita={acaoDireita}
         />
-        <View style={styles.apresentacao}>
-          <Text accessibilityRole="header" style={styles.titulo}>
-            {titulo}
-          </Text>
-          {subtitulo && <Text style={styles.subtitulo}>{subtitulo}</Text>}
-        </View>
+        {titulo && <TituloTela titulo={titulo} subtitulo={subtitulo} />}
         {children}
       </View>
     </SafeAreaView>
+  );
+}
+
+export function TituloTela({
+  titulo,
+  subtitulo,
+  acao,
+}: {
+  titulo: string;
+  subtitulo?: string;
+  acao?: ReactElement;
+}) {
+  return (
+    <View style={[styles.apresentacao, acao && styles.apresentacaoComAcao]}>
+      <View style={[styles.textos, acao && styles.textosComAcao]}>
+        <View style={acao && styles.linhaTitulo}>
+          <Text accessibilityRole="header" style={styles.titulo}>
+            {titulo}
+          </Text>
+        </View>
+        {subtitulo && <Text style={styles.subtitulo}>{subtitulo}</Text>}
+      </View>
+      {acao}
+    </View>
   );
 }
 
@@ -61,10 +80,13 @@ const styles = StyleSheet.create({
     paddingTop: 28,
   },
   apresentacao: {
-    gap: 4,
     paddingTop: 24,
     paddingBottom: 18,
   },
+  apresentacaoComAcao: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 8 },
+  textos: { gap: 4 },
+  textosComAcao: { flexBasis: 184, flexGrow: 1, flexShrink: 1 },
+  linhaTitulo: { minHeight: 44, justifyContent: 'center' },
   titulo: {
     color: cores.texto,
     fontSize: 34,

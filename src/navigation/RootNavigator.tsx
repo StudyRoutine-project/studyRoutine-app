@@ -4,8 +4,11 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { useSessao } from '../hooks/useSessao';
 import { CadastroScreen } from '../screens/CadastroScreen';
+import { DetalhesDisciplinaScreen } from '../screens/DetalhesDisciplinaScreen';
+import { EditarAtividadeScreen } from '../screens/EditarAtividadeScreen';
 import { EditarDisciplinaScreen } from '../screens/EditarDisciplinaScreen';
 import { LoginScreen } from '../screens/LoginScreen';
+import { NovaAtividadeScreen } from '../screens/NovaAtividadeScreen';
 import { NovaDisciplinaScreen } from '../screens/NovaDisciplinaScreen';
 import { PerfilScreen } from '../screens/PerfilScreen';
 import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScreen';
@@ -25,6 +28,9 @@ type Rotas = {
   Perfil: undefined;
   NovaDisciplina: undefined;
   EditarDisciplina: { disciplinaId: string };
+  DetalhesDisciplina: { disciplinaId: string };
+  NovaAtividade: { disciplinaId: string };
+  EditarAtividade: { atividadeId: string };
 };
 
 const Stack = createNativeStackNavigator<Rotas>();
@@ -56,8 +62,48 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
                 abrirPerfil={() => navigation.navigate('Perfil')}
                 novaDisciplina={() => navigation.navigate('NovaDisciplina')}
                 abrirDisciplina={(disciplinaId) =>
-                  navigation.navigate('EditarDisciplina', { disciplinaId })
+                  navigation.navigate('DetalhesDisciplina', { disciplinaId })
                 }
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="DetalhesDisciplina">
+            {({ navigation, route }) => (
+              <DetalhesDisciplinaScreen
+                key={route.params.disciplinaId}
+                usuarioId={usuario.id}
+                disciplinaId={route.params.disciplinaId}
+                voltar={() => navigation.goBack()}
+                editarDisciplina={() => navigation.navigate('EditarDisciplina', route.params)}
+                novaAtividade={() => navigation.navigate('NovaAtividade', route.params)}
+                abrirAtividade={(atividadeId) =>
+                  navigation.navigate('EditarAtividade', { atividadeId })
+                }
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="NovaAtividade">
+            {({ navigation, route }) => (
+              <NovaAtividadeScreen
+                usuarioId={usuario.id}
+                disciplinaId={route.params.disciplinaId}
+                voltar={() => navigation.goBack()}
+                concluir={(disciplinaId) => {
+                  if (navigation.isFocused())
+                    navigation.popTo('DetalhesDisciplina', { disciplinaId });
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="EditarAtividade">
+            {({ navigation, route }) => (
+              <EditarAtividadeScreen
+                usuarioId={usuario.id}
+                atividadeId={route.params.atividadeId}
+                voltar={() => navigation.goBack()}
+                concluir={() => {
+                  if (navigation.isFocused()) navigation.goBack();
+                }}
               />
             )}
           </Stack.Screen>
@@ -90,6 +136,9 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
                 voltar={() => navigation.goBack()}
                 concluir={() => {
                   if (navigation.isFocused()) navigation.goBack();
+                }}
+                concluirExclusao={() => {
+                  if (navigation.isFocused()) navigation.popTo('Abas');
                 }}
               />
             )}

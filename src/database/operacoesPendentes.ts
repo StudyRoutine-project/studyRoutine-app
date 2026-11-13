@@ -1,4 +1,8 @@
+import { randomUUID } from 'expo-crypto';
+
 import { abrirBanco } from './banco';
+
+import type { SQLiteDatabase } from 'expo-sqlite';
 
 type OperacaoPendente = {
   id: string;
@@ -8,6 +12,24 @@ type OperacaoPendente = {
 };
 
 type OperacaoArmazenada = Omit<OperacaoPendente, 'dados'> & { dados: string };
+
+export async function registrarOperacaoPendente(
+  transacao: SQLiteDatabase,
+  usuarioId: string,
+  entidade: OperacaoPendente['entidade'],
+  registroId: string,
+  dados: OperacaoPendente['dados'],
+) {
+  await transacao.runAsync(
+    `INSERT INTO operacoes_pendentes (usuario_id, id, entidade, registro_id, dados)
+     VALUES (?, ?, ?, ?, ?)`,
+    usuarioId,
+    randomUUID(),
+    entidade,
+    registroId,
+    JSON.stringify(dados),
+  );
+}
 
 export async function listarOperacoesPendentes(usuarioId: string): Promise<OperacaoPendente[]> {
   const db = await abrirBanco();
