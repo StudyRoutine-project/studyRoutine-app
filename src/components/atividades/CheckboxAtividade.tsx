@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Pressable, StyleSheet, Text } from 'react-native';
 
 import { cores } from '../../theme/cores';
 
@@ -12,6 +13,21 @@ type Props = {
 };
 
 export function CheckboxAtividade({ rotulo, texto, marcada, desativada, onPress }: Props) {
+  const escala = useRef(new Animated.Value(1)).current;
+  const anterior = useRef(marcada);
+
+  useEffect(() => {
+    if (anterior.current === marcada) return;
+    anterior.current = marcada;
+    escala.setValue(0.75);
+    Animated.spring(escala, {
+      toValue: 1,
+      friction: 4,
+      tension: 160,
+      useNativeDriver: true,
+    }).start();
+  }, [marcada, escala]);
+
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -25,9 +41,16 @@ export function CheckboxAtividade({ rotulo, texto, marcada, desativada, onPress 
         pressed && styles.pressionado,
       ]}
     >
-      <View style={[styles.caixa, marcada && styles.caixaMarcada]}>
-        {marcada && <Feather name="check" size={15} color={cores.branco} aria-hidden />}
-      </View>
+      <Animated.View
+        style={[styles.caixa, marcada && styles.caixaMarcada, { transform: [{ scale: escala }] }]}
+      >
+        <Feather
+          name="check"
+          size={15}
+          color={marcada ? cores.branco : cores.borda}
+          aria-hidden
+        />
+      </Animated.View>
       {texto && <Text style={styles.texto}>{texto}</Text>}
     </Pressable>
   );
@@ -38,27 +61,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 44,
-    minHeight: 44,
-    borderRadius: 10,
+    minWidth: 48,
+    minHeight: 48,
+    borderRadius: 24,
   },
   comTexto: {
     alignSelf: 'flex-start',
     justifyContent: 'flex-start',
     gap: 10,
     paddingHorizontal: 8,
+    borderRadius: 12,
   },
-  pressionado: { backgroundColor: cores.fundoAviso },
+  pressionado: { backgroundColor: `${cores.sucesso}12` },
   caixa: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: cores.secundario,
-    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: cores.bordaForte,
+    borderRadius: 13,
     backgroundColor: cores.branco,
   },
-  caixaMarcada: { borderColor: cores.sucesso, backgroundColor: cores.sucesso },
+  caixaMarcada: {
+    borderColor: cores.sucesso,
+    backgroundColor: cores.sucesso,
+    boxShadow: `0 0 0 4px ${cores.sucesso}1F`,
+  },
   texto: { flexShrink: 1, color: cores.texto, fontSize: 15, fontWeight: '600' },
 });

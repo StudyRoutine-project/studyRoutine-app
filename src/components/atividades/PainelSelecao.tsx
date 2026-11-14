@@ -1,4 +1,4 @@
-import { Modal, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BotaoFechar } from '../BotaoFechar';
@@ -20,6 +20,7 @@ export function PainelSelecao({
   return (
     <Modal transparent animationType="fade" onRequestClose={fechar}>
       <View style={[styles.fundo, { paddingTop: top + 16, paddingBottom: bottom + 16 }]}>
+        <Pressable accessible={false} onPress={fechar} style={StyleSheet.absoluteFill} />
         <View accessibilityViewIsModal style={styles.painel}>
           <View style={styles.cabecalho}>
             <Text accessibilityRole="header" style={styles.titulo}>

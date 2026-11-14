@@ -1,22 +1,28 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { AcaoEditar } from '../components/AcaoEditar';
-import { Botao } from '../components/Botao';
+import { BotaoFlutuante } from '../components/BotaoFlutuante';
+import { CabecalhoSecao } from '../components/CabecalhoSecao';
+import { EstadoErro } from '../components/EstadoErro';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { LayoutInterno, TituloTela } from '../components/LayoutInterno';
-import { MensagemErro } from '../components/MensagemErro';
-import { FichaAtividade } from '../components/atividades/FichaAtividade';
+import { ResumoNumeros } from '../components/ResumoNumeros';
 import { FiltroStatusAtividades } from '../components/atividades/FiltroStatusAtividades';
+import { ListaAtividades } from '../components/atividades/ListaAtividades';
+import {
+  agruparPorSituacao,
+  ordenarPorUrgencia,
+} from '../components/atividades/situacaoAtividade';
 import { listarAtividadesDisciplina } from '../database/atividades';
 import { buscarDisciplina } from '../database/disciplinas';
 import { useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
 import { useHorarioAtual } from '../hooks/useHorarioAtual';
 import { observarAtividadesDosLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
-import { prazoVencido } from '../utils/datas';
 
+import type { ComponentProps } from 'react';
 import type { Atividade } from '../database/atividades';
 import type { Disciplina } from '../database/disciplinas';
 import type { StatusAtividades } from '../components/atividades/FiltroStatusAtividades';
@@ -32,6 +38,13 @@ type Props = {
 
 type Estado = 'carregando' | 'erro' | null | { disciplina: Disciplina; atividades: Atividade[] };
 
+const vazioPorFiltro = {
+  todas: { ilustracao: 'atividades', titulo: 'Nenhuma atividade nesta disciplina' },
+  pendentes: { ilustracao: 'emDia', titulo: 'Nenhuma atividade pendente' },
+  atrasadas: { ilustracao: 'emDia', titulo: 'Nenhuma atividade atrasada' },
+  concluidas: { ilustracao: 'atividades', titulo: 'Nenhuma atividade concluída' },
+} satisfies Record<StatusAtividades, ComponentProps<typeof EstadoVazio>>;
+
 export function DetalhesDisciplinaScreen({
   usuarioId,
   disciplinaId,
@@ -44,21 +57,18 @@ export function DetalhesDisciplinaScreen({
   const [tentativa, setTentativa] = useState(0);
   const [filtro, setFiltro] = useState<StatusAtividades>('todas');
   const agora = useHorarioAtual();
-  const { alterarConclusao, atividadeSalvando, erroConclusao } = useConclusaoAtividade(
-    usuarioId,
-    (id, concluida) => {
-      setEstado((atual) => {
-        if (!atual || typeof atual === 'string') return atual;
+  const conclusao = useConclusaoAtividade(usuarioId, (id, concluida) => {
+    setEstado((atual) => {
+      if (!atual || typeof atual === 'string') return atual;
 
-        return {
-          ...atual,
-          atividades: atual.atividades.map((item) =>
-            item.id === id ? { ...item, concluida } : item,
-          ),
-        };
-      });
-    },
-  );
+      return {
+        ...atual,
+        atividades: atual.atividades.map((item) =>
+          item.id === id ? { ...item, concluida } : item,
+        ),
+      };
+    });
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -100,130 +110,89 @@ export function DetalhesDisciplinaScreen({
 
   const lista = estado && typeof estado === 'object' ? estado : null;
   const atividadesPorStatus = useMemo(() => {
-    const grupos: Record<StatusAtividades, Atividade[]> = {
-      todas: lista?.atividades ?? [],
-      pendentes: [],
-      atrasadas: [],
-      concluidas: [],
-    };
-    for (const atividade of grupos.todas) {
-      if (atividade.concluida) {
-        grupos.concluidas.push(atividade);
-      } else if (prazoVencido(atividade.data, atividade.horario, agora)) {
-        grupos.atrasadas.push(atividade);
-      } else {
-        grupos.pendentes.push(atividade);
-      }
-    }
-    return grupos;
+    const atividades = lista?.atividades ?? [];
+    const { atrasada, hoje, pendente, concluida } = agruparPorSituacao(atividades, agora);
+    return {
+      todas: ordenarPorUrgencia(atividades, agora),
+      pendentes: [...hoje, ...pendente],
+      atrasadas: atrasada,
+      concluidas: concluida,
+    } satisfies Record<StatusAtividades, Atividade[]>;
   }, [lista?.atividades, agora]);
-  const temAtividades = atividadesPorStatus.todas.length > 0;
+
+  if (!lista) {
+    return (
+      <LayoutInterno titulo="Disciplina" voltar={voltar}>
+        {estado === 'carregando' ? (
+          <ActivityIndicator color={cores.roxo} accessibilityLabel="Carregando disciplina" />
+        ) : estado === 'erro' ? (
+          <EstadoErro
+            mensagem="Não foi possível carregar a disciplina."
+            tentarDeNovo={() => setTentativa((atual) => atual + 1)}
+          />
+        ) : (
+          <EstadoVazio ilustracao="busca" titulo="Disciplina indisponível" />
+        )}
+      </LayoutInterno>
+    );
+  }
+
+  const { disciplina } = lista;
+  const total = atividadesPorStatus.todas.length;
+  const concluidas = atividadesPorStatus.concluidas.length;
   const contagens = {
-    todas: atividadesPorStatus.todas.length,
+    todas: total,
     pendentes: atividadesPorStatus.pendentes.length,
     atrasadas: atividadesPorStatus.atrasadas.length,
-    concluidas: atividadesPorStatus.concluidas.length,
+    concluidas,
   };
+  const atividades = atividadesPorStatus[filtro];
 
   return (
-    <LayoutInterno titulo={lista ? undefined : 'Disciplina'} voltar={voltar}>
-      {lista ? (
-        <FlatList
-          data={atividadesPorStatus[filtro]}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.lista}
-          ListHeaderComponent={
-            <>
-              <TituloTela
-                titulo={lista.disciplina.nome}
-                subtitulo={lista.disciplina.descricao ?? undefined}
-                acao={<AcaoEditar rotulo="Editar disciplina" onPress={editarDisciplina} />}
-              />
-              <View style={styles.cabecalhoAtividades}>
-                <Text accessibilityRole="header" style={styles.subtitulo}>
-                  Atividades
-                </Text>
-                {temAtividades && (
-                  <Botao texto="Nova atividade" icone="plus" onPress={novaAtividade} compacto />
-                )}
-              </View>
-              {temAtividades && (
-                <View style={styles.filtro}>
-                  <FiltroStatusAtividades
-                    valor={filtro}
-                    contagens={contagens}
-                    selecionar={setFiltro}
-                  />
-                </View>
-              )}
-            </>
-          }
-          ListEmptyComponent={
-            temAtividades ? (
-              <EstadoVazio
-                mensagem={
-                  filtro === 'pendentes'
-                    ? 'Nenhuma atividade pendente'
-                    : filtro === 'atrasadas'
-                      ? 'Nenhuma atividade atrasada'
-                      : 'Nenhuma atividade concluída'
-                }
-              />
-            ) : (
-              <View style={styles.vazio}>
-                <EstadoVazio mensagem="Nenhuma atividade nesta disciplina" />
-                <View style={styles.acaoVazio}>
-                  <Botao texto="Nova atividade" icone="plus" onPress={novaAtividade} />
-                </View>
-              </View>
-            )
-          }
-          renderItem={({ item }) => (
-            <View style={styles.item}>
-              <FichaAtividade
-                atividade={item}
-                agora={agora}
-                onPress={() => abrirAtividade(item.id)}
-                onAlterarConclusao={() => void alterarConclusao(item)}
-                salvando={atividadeSalvando === item.id}
-                conclusaoDesativada={atividadeSalvando !== undefined}
-              />
-              {erroConclusao === item.id && (
-                <MensagemErro mensagem="Não foi possível atualizar a atividade. Tente de novo." />
-              )}
-            </View>
+    <LayoutInterno
+      rolavel
+      voltar={voltar}
+      flutuante={<BotaoFlutuante texto="Nova atividade" onPress={novaAtividade} />}
+    >
+      <View style={styles.conteudo}>
+        <View>
+          <TituloTela
+            titulo={disciplina.nome}
+            subtitulo={disciplina.descricao ?? undefined}
+            acao={<AcaoEditar rotulo="Editar disciplina" onPress={editarDisciplina} />}
+          />
+          {total > 0 && (
+            <ResumoNumeros
+              atrasadas={contagens.atrasadas}
+              concluidas={concluidas}
+              total={total}
+            />
           )}
-        />
-      ) : estado === 'carregando' ? (
-        <ActivityIndicator color={cores.roxo} accessibilityLabel="Carregando disciplina" />
-      ) : estado === 'erro' ? (
-        <View style={styles.erro}>
-          <MensagemErro mensagem="Não foi possível carregar a disciplina." />
-          <Botao texto="Tentar de novo" onPress={() => setTentativa((atual) => atual + 1)} />
         </View>
-      ) : (
-        <EstadoVazio mensagem="Disciplina indisponível" />
-      )}
+
+        <View style={styles.secao}>
+          <CabecalhoSecao titulo="Atividades" />
+          {total > 0 && (
+            <FiltroStatusAtividades valor={filtro} contagens={contagens} selecionar={setFiltro} />
+          )}
+        </View>
+
+        {atividades.length > 0 ? (
+          <ListaAtividades
+            atividades={atividades}
+            agora={agora}
+            conclusao={conclusao}
+            abrirAtividade={abrirAtividade}
+          />
+        ) : (
+          <EstadoVazio {...vazioPorFiltro[filtro]} />
+        )}
+      </View>
     </LayoutInterno>
   );
 }
 
 const styles = StyleSheet.create({
-  cabecalhoAtividades: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 14,
-    gap: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: cores.borda,
-  },
-  subtitulo: { flexShrink: 1, color: cores.texto, fontSize: 21, fontWeight: '700' },
-  filtro: { marginTop: 12 },
-  vazio: { gap: 16, paddingBottom: 8 },
-  acaoVazio: { alignSelf: 'center', width: '100%', maxWidth: 280 },
-  lista: { gap: 12, paddingBottom: 20 },
-  item: { gap: 6 },
-  erro: { gap: 12 },
+  conteudo: { gap: 20 },
+  secao: { gap: 12 },
 });

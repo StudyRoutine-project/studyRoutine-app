@@ -2,13 +2,14 @@ import Feather from '@expo/vector-icons/Feather';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { cores } from '../../theme/cores';
+import { FiguraIcone } from '../FiguraIcone';
 
-import type { ComponentProps } from 'react';
+import type { Icone } from '../FiguraIcone';
 
 export type OpcaoSelecao<T extends string> = {
   valor: T;
   rotulo: string;
-  icone: ComponentProps<typeof Feather>['name'];
+  icone: Icone;
   cor: string;
   total?: number;
 };
@@ -38,7 +39,7 @@ export function ListaSelecao<T extends string>({
             style={[styles.opcao, selecionada && styles.selecionada]}
           >
             <View style={[styles.icone, { backgroundColor: `${opcao.cor}18` }]}>
-              <Feather name={opcao.icone} color={opcao.cor} size={19} aria-hidden />
+              <FiguraIcone icone={opcao.icone} cor={opcao.cor} tamanho={20} />
             </View>
             <Text style={styles.rotulo}>{opcao.rotulo}</Text>
             {opcao.total !== undefined && <Text style={styles.total}>{opcao.total}</Text>}

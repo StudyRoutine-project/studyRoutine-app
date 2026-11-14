@@ -1,9 +1,10 @@
-import Feather from '@expo/vector-icons/Feather';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { cores } from '../../theme/cores';
-import { formatarPrazoResumido, prazoVencido } from '../../utils/datas';
+import { superficie } from '../../theme/superficie';
+import { FiguraIcone } from '../FiguraIcone';
 import { CheckboxAtividade } from './CheckboxAtividade';
+import { PrazoAtividade } from './PrazoAtividade';
 import { visualTipo } from './tiposAtividade';
 
 import type { Atividade } from '../../database/atividades';
@@ -29,44 +30,28 @@ export function FichaAtividade({
 }: Props) {
   const tipo = visualTipo[atividade.tipo];
   const concluida = atividade.concluida === 1;
-  const atrasada = !concluida && prazoVencido(atividade.data, atividade.horario, agora);
-  const adiada = !concluida && atividade.adiada === 1;
-  const estadoPrazo = atrasada ? 'Em atraso' : adiada ? 'Adiado' : undefined;
-  const iconePrazo = atrasada ? 'alert-triangle' : adiada ? 'clock' : 'calendar';
-  const corPrazo = atrasada ? cores.erro : adiada ? cores.aviso : cores.secundario;
+  const corIcone = concluida ? cores.secundario : tipo.cor;
 
   return (
-    <View style={[styles.ficha, concluida && styles.fichaConcluida]}>
+    <View style={[superficie, styles.ficha]}>
       <Pressable
         accessibilityRole="button"
         accessibilityHint="Abre a edição da atividade"
         onPress={onPress}
         disabled={salvando}
-        style={({ pressed }) => [
-          styles.abrir,
-          concluida && styles.abrirConcluida,
-          pressed && styles.pressionada,
-        ]}
+        style={({ pressed }) => [styles.abrir, pressed && styles.pressionada]}
       >
-        <View style={[styles.icone, { backgroundColor: `${tipo.cor}18` }]}>
-          <Feather name={tipo.icone} size={22} color={tipo.cor} aria-hidden />
+        <View aria-hidden style={[styles.icone, { backgroundColor: `${corIcone}14` }]}>
+          <FiguraIcone icone={tipo.icone} cor={corIcone} tamanho={22} />
         </View>
-        <View style={styles.dados}>
-          <Text style={[styles.titulo, concluida && styles.tituloConcluido]}>
+        <View style={styles.textos}>
+          <Text numberOfLines={1} style={[styles.titulo, concluida && styles.tituloConcluido]}>
             {atividade.titulo}
           </Text>
-          <Text style={[styles.tipo, { color: concluida ? cores.secundario : tipo.cor }]}>
-            {disciplina ? [disciplina, tipo.rotulo].join(' · ') : tipo.rotulo}
+          <Text numberOfLines={1} style={styles.detalhes}>
+            {disciplina ? `${disciplina} · ` : `${tipo.rotulo} · `}
+            <PrazoAtividade atividade={atividade} agora={agora} />
           </Text>
-          <View style={styles.prazo}>
-            <Feather name={iconePrazo} size={14} color={corPrazo} aria-hidden />
-            <Text style={styles.data}>
-              {estadoPrazo && (
-                <Text style={[styles.estadoPrazo, { color: corPrazo }]}>{estadoPrazo} · </Text>
-              )}
-              {formatarPrazoResumido(atividade.data, atividade.horario)}
-            </Text>
-          </View>
         </View>
       </Pressable>
       <CheckboxAtividade
@@ -80,40 +65,26 @@ export function FichaAtividade({
 }
 
 const styles = StyleSheet.create({
-  ficha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: 4,
-    backgroundColor: cores.branco,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: cores.borda,
-  },
-  fichaConcluida: { backgroundColor: cores.fundo },
+  ficha: { flexDirection: 'row', alignItems: 'center', paddingRight: 6, borderRadius: 18 },
   abrir: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    minHeight: 68,
     paddingVertical: 12,
     paddingLeft: 12,
-    paddingRight: 4,
-    borderRadius: 15,
   },
-  abrirConcluida: { opacity: 0.6 },
-  pressionada: { backgroundColor: cores.fundoAviso },
+  pressionada: { opacity: 0.6 },
   icone: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    width: 42,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 14,
   },
-  dados: { flex: 1, gap: 5 },
-  titulo: { color: cores.texto, fontSize: 17, fontWeight: '700' },
+  textos: { flex: 1, gap: 3 },
+  titulo: { color: cores.texto, fontSize: 15, fontWeight: '600', lineHeight: 20 },
   tituloConcluido: { color: cores.secundario, textDecorationLine: 'line-through' },
-  tipo: { flexShrink: 1, fontSize: 13, fontWeight: '600' },
-  prazo: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-  estadoPrazo: { fontWeight: '600' },
-  data: { flexShrink: 1, color: cores.secundario, fontSize: 12, fontVariant: ['tabular-nums'] },
+  detalhes: { color: cores.secundario, fontSize: 13 },
 });

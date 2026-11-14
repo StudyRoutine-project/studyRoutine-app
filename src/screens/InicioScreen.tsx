@@ -1,21 +1,25 @@
-import Feather from '@expo/vector-icons/Feather';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Botao } from '../components/Botao';
+import { BotaoFlutuante } from '../components/BotaoFlutuante';
+import { CabecalhoSecao } from '../components/CabecalhoSecao';
+import { EstadoErro } from '../components/EstadoErro';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { LayoutInterno } from '../components/LayoutInterno';
-import { MensagemErro } from '../components/MensagemErro';
-import { FichaAtividade } from '../components/atividades/FichaAtividade';
-import { ResumoEstudos } from '../components/inicio/ResumoEstudos';
+import { ResumoNumeros } from '../components/ResumoNumeros';
+import { ListaAtividades } from '../components/atividades/ListaAtividades';
+import { agruparPorSituacao } from '../components/atividades/situacaoAtividade';
+import { BannerInicio } from '../components/inicio/BannerInicio';
 import { listarAtividades } from '../database/atividades';
 import { listarDisciplinas } from '../database/disciplinas';
 import { useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
 import { useHorarioAtual } from '../hooks/useHorarioAtual';
 import { observarAtividadesDosLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
-import { dataLocal, prazoVencido } from '../utils/datas';
+import { contar } from '../utils/contar';
+import { formatarPrazoResumido } from '../utils/datas';
 
 import type { ReactNode } from 'react';
 import type { Atividade } from '../database/atividades';
@@ -32,7 +36,7 @@ type Props = {
 
 type Dados = { disciplinas: Disciplina[]; atividades: Atividade[] };
 
-const limitePrioridades = 3;
+const limiteProximas = 5;
 
 const formatoData = new Intl.DateTimeFormat('pt-BR', {
   weekday: 'long',
@@ -83,49 +87,36 @@ export function InicioScreen({
     }, [usuarioId, tentativa]),
   );
 
-  const { alterarConclusao, atividadeSalvando, erroConclusao } = useConclusaoAtividade(
-    usuarioId,
-    (id, concluida) => {
-      setDados((atual) => {
-        if (!atual) return atual;
+  const conclusao = useConclusaoAtividade(usuarioId, (id, concluida) => {
+    setDados((atual) => {
+      if (!atual) return atual;
 
-        return {
-          ...atual,
-          atividades: atual.atividades.map((atividade) =>
-            atividade.id === id ? { ...atividade, concluida } : atividade,
-          ),
-        };
-      });
-    },
-  );
+      return {
+        ...atual,
+        atividades: atual.atividades.map((atividade) =>
+          atividade.id === id ? { ...atividade, concluida } : atividade,
+        ),
+      };
+    });
+  });
 
   const resumo = useMemo(() => {
     if (!dados) return;
 
-    const disciplinas = new Map(dados.disciplinas.map(({ id, nome }) => [id, nome]));
-    const atrasadas: Atividade[] = [];
-    const hoje: Atividade[] = [];
-    const proximas: Atividade[] = [];
-    const diaAtual = dataLocal(new Date(agora));
-    let concluidas = 0;
-
-    for (const atividade of dados.atividades) {
-      if (atividade.concluida) {
-        concluidas++;
-      } else if (prazoVencido(atividade.data, atividade.horario, agora)) {
-        atrasadas.push(atividade);
-      } else if (atividade.data === diaAtual) {
-        hoje.push(atividade);
-      } else {
-        proximas.push(atividade);
-      }
-    }
+    const disciplinas = new Map(dados.disciplinas.map((disciplina) => [disciplina.id, disciplina]));
+    const grupos = agruparPorSituacao(dados.atividades, agora);
+    const secoes = [
+      { titulo: 'Em atraso', atividades: grupos.atrasada },
+      { titulo: 'Hoje', atividades: grupos.hoje },
+      { titulo: 'Próximos prazos', atividades: grupos.pendente.slice(0, limiteProximas) },
+    ].filter((secao) => secao.atividades.length > 0);
 
     return {
       disciplinas,
-      pendentes: dados.atividades.length - concluidas,
-      concluidas,
-      prioridades: [...atrasadas, ...hoje, ...proximas].slice(0, limitePrioridades),
+      grupos,
+      secoes,
+      total: dados.atividades.length,
+      depois: grupos.pendente.slice(limiteProximas),
     };
   }, [dados, agora]);
 
@@ -133,110 +124,105 @@ export function InicioScreen({
   const data = formatoData.format(agora);
 
   return (
-    <LayoutInterno acaoDireita={acaoPerfil} edges={['top', 'left', 'right']}>
-      <FlatList
-        data={resumo?.prioridades ?? []}
-        keyExtractor={(atividade) => atividade.id}
-        contentContainerStyle={styles.lista}
-        ListHeaderComponent={
-          <View style={styles.cabecalho}>
-            <View style={styles.apresentacao}>
-              <Text accessibilityRole="header" style={styles.titulo}>
-                {primeiroNome ? `Olá, ${primeiroNome}` : 'Início'}
-              </Text>
-              <View style={styles.linhaData}>
-                <Feather name="calendar" size={15} color={cores.secundario} aria-hidden />
-                <Text style={styles.data}>{data.charAt(0).toUpperCase() + data.slice(1)}</Text>
-              </View>
-            </View>
-            {resumo && resumo.disciplinas.size > 0 && (
-              <ResumoEstudos
-                disciplinas={resumo.disciplinas.size}
-                pendentes={resumo.pendentes}
-                concluidas={resumo.concluidas}
+    <LayoutInterno
+      rolavel
+      acaoDireita={acaoPerfil}
+      edges={['top', 'left', 'right']}
+      flutuante={
+        !!resumo?.disciplinas.size && (
+          <BotaoFlutuante texto="Nova atividade" onPress={novaAtividade} />
+        )
+      }
+    >
+      <View style={styles.conteudo}>
+        <View style={styles.saudacao}>
+          <Text accessibilityRole="header" numberOfLines={1} style={styles.titulo}>
+            {primeiroNome ? (
+              <>
+                Olá, <Text style={styles.nome}>{primeiroNome}</Text>
+              </>
+            ) : (
+              'Início'
+            )}
+          </Text>
+          <Text style={styles.data}>{data.charAt(0).toUpperCase() + data.slice(1)}</Text>
+        </View>
+
+        {erro ? (
+          <EstadoErro
+            mensagem="Não foi possível carregar seus estudos."
+            tentarDeNovo={() => setTentativa((n) => n + 1)}
+          />
+        ) : !resumo ? (
+          <ActivityIndicator accessibilityLabel="Carregando o início" color={cores.roxo} />
+        ) : resumo.disciplinas.size === 0 ? (
+          <EstadoVazio
+            ilustracao="disciplinas"
+            titulo="Nenhuma disciplina cadastrada"
+            descricao="Cadastre sua primeira disciplina para começar."
+            acao={<Botao texto="Nova disciplina" icone="plus" compacto onPress={novaDisciplina} />}
+          />
+        ) : (
+          <>
+            <BannerInicio
+              titulo="Organize sua rotina de estudos"
+              descricao="Cadastre suas provas, trabalhos e tarefas em um só lugar."
+            />
+
+            {resumo.total === 0 ? (
+              <EstadoVazio
+                ilustracao="atividades"
+                titulo="Nenhuma atividade cadastrada"
+                descricao="Suas próximas entregas aparecem aqui."
+              />
+            ) : (
+              <ResumoNumeros
+                atrasadas={resumo.grupos.atrasada.length}
+                concluidas={resumo.grupos.concluida.length}
+                total={resumo.total}
               />
             )}
-            {erro && (
-              <View style={styles.estado}>
-                <MensagemErro mensagem="Não foi possível carregar seus estudos." />
-                <Botao texto="Tentar de novo" compacto onPress={() => setTentativa((n) => n + 1)} />
+
+            {resumo.secoes.map(({ titulo, atividades }) => (
+              <View key={titulo} style={styles.secao}>
+                <CabecalhoSecao titulo={titulo} total={atividades.length} />
+                <ListaAtividades
+                  atividades={atividades}
+                  agora={agora}
+                  disciplinas={resumo.disciplinas}
+                  conclusao={conclusao}
+                  abrirAtividade={abrirAtividade}
+                />
               </View>
+            ))}
+
+            {resumo.depois.length > 0 && (
+              <Text style={styles.depois}>
+                Mais {contar(resumo.depois.length, 'atividade', 'atividades')} com prazo a partir
+                de {formatarPrazoResumido(resumo.depois[0].data, null)}.
+              </Text>
             )}
-            {!!resumo?.prioridades.length && (
-              <View style={styles.cabecalhoPrioridades}>
-                <Text accessibilityRole="header" style={styles.prioridades}>
-                  Prioridades
-                </Text>
-                <Botao texto="Nova atividade" icone="plus" compacto onPress={novaAtividade} />
-              </View>
+
+            {resumo.total > 0 && resumo.secoes.length === 0 && (
+              <EstadoVazio
+                ilustracao="emDia"
+                titulo="Você está em dia"
+                descricao="Nenhuma atividade pendente no momento."
+              />
             )}
-          </View>
-        }
-        ListEmptyComponent={
-          erro ? undefined : (
-            <View style={styles.estado}>
-              {resumo ? (
-                <>
-                  <EstadoVazio
-                    mensagem={
-                      resumo.disciplinas.size === 0
-                        ? 'Cadastre sua primeira disciplina para começar.'
-                        : resumo.concluidas > 0
-                          ? 'Você está em dia.'
-                          : 'Nenhuma atividade cadastrada.'
-                    }
-                  />
-                  <View style={styles.acaoVazia}>
-                    {resumo.disciplinas.size === 0 ? (
-                      <Botao texto="Nova disciplina" icone="plus" compacto onPress={novaDisciplina} />
-                    ) : (
-                      <Botao texto="Nova atividade" icone="plus" compacto onPress={novaAtividade} />
-                    )}
-                  </View>
-                </>
-              ) : (
-                <ActivityIndicator accessibilityLabel="Carregando o início" color={cores.roxo} />
-              )}
-            </View>
-          )
-        }
-        renderItem={({ item }) => (
-          <View style={styles.item}>
-            <FichaAtividade
-              atividade={item}
-              disciplina={resumo?.disciplinas.get(item.disciplina_id)}
-              agora={agora}
-              onPress={() => abrirAtividade(item.id)}
-              onAlterarConclusao={() => void alterarConclusao(item)}
-              salvando={atividadeSalvando === item.id}
-              conclusaoDesativada={atividadeSalvando !== undefined}
-            />
-            {erroConclusao === item.id && (
-              <MensagemErro mensagem="Não foi possível atualizar a atividade. Tente de novo." />
-            )}
-          </View>
+          </>
         )}
-      />
+      </View>
     </LayoutInterno>
   );
 }
 
 const styles = StyleSheet.create({
-  lista: { flexGrow: 1, paddingTop: 24, paddingBottom: 24 },
-  cabecalho: { gap: 22, paddingBottom: 12 },
-  apresentacao: { gap: 7 },
-  linhaData: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  data: { flexShrink: 1, color: cores.secundario, fontSize: 14 },
-  titulo: { color: cores.texto, fontSize: 34, fontWeight: '700', letterSpacing: -1 },
-  estado: { gap: 16, paddingBottom: 12 },
-  acaoVazia: { alignSelf: 'center' },
-  cabecalhoPrioridades: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  prioridades: { color: cores.texto, fontSize: 21, fontWeight: '700' },
-  item: { gap: 6, marginBottom: 8 },
+  conteudo: { flexGrow: 1, gap: 22, paddingTop: 22 },
+  saudacao: { gap: 2 },
+  titulo: { color: cores.texto, fontSize: 28, fontWeight: '400', letterSpacing: -0.8 },
+  nome: { fontWeight: '700' },
+  data: { color: cores.secundario, fontSize: 14 },
+  secao: { gap: 10 },
+  depois: { marginTop: -10, color: cores.secundario, fontSize: 13, lineHeight: 19 },
 });
