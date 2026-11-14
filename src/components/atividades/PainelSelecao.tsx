@@ -1,7 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BotaoFechar } from '../BotaoFechar';
 import { cores } from '../../theme/cores';
 
 import type { ReactNode } from 'react';
@@ -20,19 +20,13 @@ export function PainelSelecao({
   return (
     <Modal transparent animationType="fade" onRequestClose={fechar}>
       <View style={[styles.fundo, { paddingTop: top + 16, paddingBottom: bottom + 16 }]}>
+        <Pressable accessible={false} onPress={fechar} style={StyleSheet.absoluteFill} />
         <View accessibilityViewIsModal style={styles.painel}>
           <View style={styles.cabecalho}>
             <Text accessibilityRole="header" style={styles.titulo}>
               {titulo}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Fechar seletor"
-              onPress={fechar}
-              style={styles.fechar}
-            >
-              <Feather name="x" size={22} color={cores.secundario} aria-hidden />
-            </Pressable>
+            <BotaoFechar rotulo="Fechar seletor" onPress={fechar} />
           </View>
           {children}
         </View>
@@ -65,12 +59,4 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   titulo: { flexShrink: 1, fontSize: 21, fontWeight: '700', color: cores.texto },
-  fechar: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: cores.fundoAviso,
-  },
 });

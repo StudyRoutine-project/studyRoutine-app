@@ -40,12 +40,13 @@ export function Botao({
       onPress={onPress}
       style={({ pressed }) => [
         styles.botao,
+        compacto && styles.botaoCompacto,
         sobCursor && !desativado && styles.hover,
         pressed && styles.pressao,
       ]}
     >
       <LinearGradient
-        colors={[cores.roxoClaro, cores.roxo, '#2E1B88']}
+        colors={[cores.roxoClaro, cores.roxo, cores.roxoEscuro]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[
@@ -91,6 +92,7 @@ const styles = StyleSheet.create({
       web: { transitionProperty: 'opacity, transform', transitionDuration: '140ms' } as ViewStyle,
     }),
   },
+  botaoCompacto: { borderRadius: 12 },
   hover: {
     opacity: 0.92,
   },

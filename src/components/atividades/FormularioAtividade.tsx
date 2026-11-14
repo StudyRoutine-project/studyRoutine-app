@@ -19,9 +19,11 @@ import { CampoTexto } from '../CampoTexto';
 import { EstadoVazio } from '../EstadoVazio';
 import { LayoutInterno } from '../LayoutInterno';
 import { MensagemErro } from '../MensagemErro';
+import { IconeDisciplina } from '../disciplinas/IconeDisciplina';
 import { CalendarioSelecao } from './CalendarioSelecao';
 import { CampoSelecao } from './CampoSelecao';
 import { CheckboxAtividade } from './CheckboxAtividade';
+import { HorarioSelecao } from './HorarioSelecao';
 import { ListaSelecao } from './ListaSelecao';
 import { PainelSelecao } from './PainelSelecao';
 import { opcoesTipo, visualTipo } from './tiposAtividade';
@@ -42,12 +44,13 @@ type Props = {
   concluir: (disciplinaId: string) => void;
 };
 
-type Seletor = 'tipo' | 'disciplina' | 'data';
+type Seletor = 'tipo' | 'disciplina' | 'data' | 'horario';
 
 const titulosSeletores = {
   tipo: 'Tipo de atividade',
   disciplina: 'Escolher disciplina',
   data: 'Escolher data',
+  horario: 'Escolher horário',
 };
 
 export function FormularioAtividade({
@@ -111,17 +114,12 @@ export function FormularioAtividade({
         valor: item.id,
         rotulo: item.nome,
         cor: item.cor,
-        icone: 'book-open' as const,
+        icone: IconeDisciplina,
       }))
     : [];
   const disciplina = opcoesDisciplina.find((item) => item.valor === disciplinaSelecionada);
   const tipoVisual = tipo ? visualTipo[tipo] : undefined;
   const horarioInvalido = !horarioValido(horario);
-
-  function alterarHorario(texto: string) {
-    const digitos = texto.replace(/\D/g, '').slice(0, 4);
-    setHorario(digitos.length > 2 ? `${digitos.slice(0, 2)}:${digitos.slice(2)}` : digitos);
-  }
 
   function abrirSeletor(campo: Seletor) {
     Keyboard.dismiss();
@@ -176,13 +174,26 @@ export function FormularioAtividade({
           <Botao texto="Tentar de novo" onPress={() => setTentativa((atual) => atual + 1)} />
         </View>
       ) : disciplinas.length === 0 ? (
-        <EstadoVazio mensagem="Cadastre uma disciplina para adicionar atividades" />
+        <EstadoVazio
+          ilustracao="disciplinas"
+          titulo="Nenhuma disciplina cadastrada"
+          descricao="Cadastre uma disciplina para adicionar atividades."
+        />
       ) : (
         <KeyboardAvoidingView
           style={styles.corpo}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formulario}>
+            {concluida !== undefined && (
+              <CheckboxAtividade
+                rotulo="Atividade concluída"
+                texto="Atividade concluída"
+                marcada={concluida}
+                desativada={salvando}
+                onPress={() => setConcluida(!concluida)}
+              />
+            )}
             <CampoTexto
               rotulo="Título"
               icone="edit-3"
@@ -207,7 +218,7 @@ export function FormularioAtividade({
               rotulo="Disciplina"
               placeholder="Selecione a disciplina"
               valor={disciplina?.rotulo}
-              icone="book-open"
+              icone={IconeDisciplina}
               cor={disciplina?.cor}
               desativado={salvando}
               erro={validar && !disciplina ? 'Selecione uma disciplina.' : undefined}
@@ -228,17 +239,16 @@ export function FormularioAtividade({
                 />
               </View>
               <View style={styles.campoPrazo}>
-                <CampoTexto
+                <CampoSelecao
                   rotulo="Horário"
-                  placeholder="HH:MM"
+                  placeholder="Escolher hora"
+                  valor={horario || undefined}
                   icone="clock"
-                  corIcone={cores.roxo}
-                  accessibilityHint="Use dois dígitos para a hora e dois para os minutos."
-                  inputMode="numeric"
-                  value={horario}
-                  onChangeText={alterarHorario}
-                  editable={!salvando}
-                  erro={validar && horarioInvalido ? 'Informe um horário em HH:MM.' : undefined}
+                  iconeComFundo={false}
+                  mostrarSeta={false}
+                  desativado={salvando}
+                  erro={validar && horarioInvalido ? 'Escolha um horário.' : undefined}
+                  onPress={() => abrirSeletor('horario')}
                 />
               </View>
             </View>
@@ -250,15 +260,6 @@ export function FormularioAtividade({
               editable={!salvando}
               multiline
             />
-            {concluida !== undefined && (
-              <CheckboxAtividade
-                rotulo="Atividade concluída"
-                texto="Atividade concluída"
-                marcada={concluida}
-                desativada={salvando}
-                onPress={() => setConcluida(!concluida)}
-              />
-            )}
           </ScrollView>
           <View style={styles.rodape}>
             {erroSalvar && (
@@ -298,6 +299,15 @@ export function FormularioAtividade({
               valor={disciplinaSelecionada}
               selecionar={(valor) => {
                 setDisciplinaSelecionada(valor);
+                fecharSeletor();
+              }}
+            />
+          )}
+          {seletor === 'horario' && (
+            <HorarioSelecao
+              valor={horario}
+              selecionar={(valor) => {
+                setHorario(valor);
                 fecharSeletor();
               }}
             />

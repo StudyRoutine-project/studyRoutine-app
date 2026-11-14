@@ -1,19 +1,24 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import { Botao } from '../components/Botao';
+import { BotaoFlutuante } from '../components/BotaoFlutuante';
 import { CampoTexto } from '../components/CampoTexto';
+import { EstadoErro } from '../components/EstadoErro';
 import { EstadoVazio } from '../components/EstadoVazio';
-import { MensagemErro } from '../components/MensagemErro';
+import { situacaoAtividade } from '../components/atividades/situacaoAtividade';
 import { FichaDisciplina } from '../components/disciplinas/FichaDisciplina';
-import { LayoutInterno } from '../components/LayoutInterno';
+import { LayoutInterno, TituloTela } from '../components/LayoutInterno';
+import { listarAtividades } from '../database/atividades';
 import { listarDisciplinas } from '../database/disciplinas';
+import { useHorarioAtual } from '../hooks/useHorarioAtual';
 import { cores } from '../theme/cores';
 import { normalizarTexto } from '../utils/normalizarTexto';
 
 import type { ReactNode } from 'react';
+import type { ResumoDisciplina } from '../components/disciplinas/FichaDisciplina';
+import type { Atividade } from '../database/atividades';
 import type { Disciplina } from '../database/disciplinas';
 
 type Props = {
@@ -23,7 +28,9 @@ type Props = {
   abrirDisciplina: (disciplinaId: string) => void;
 };
 
-type EstadoLista = 'carregando' | 'erro' | Disciplina[];
+type EstadoLista = 'carregando' | 'erro' | { disciplinas: Disciplina[]; atividades: Atividade[] };
+
+const resumoVazio: ResumoDisciplina = { atrasadas: 0, pendentes: 0, concluidas: 0 };
 
 export function DisciplinasScreen({
   usuarioId,
@@ -31,20 +38,20 @@ export function DisciplinasScreen({
   novaDisciplina,
   abrirDisciplina,
 }: Props) {
-  const [disciplinas, setDisciplinas] = useState<EstadoLista>('carregando');
+  const [estado, setEstado] = useState<EstadoLista>('carregando');
   const [tentativa, setTentativa] = useState(0);
   const [busca, setBusca] = useState('');
 
   useFocusEffect(
     useCallback(() => {
       let ativa = true;
-      setDisciplinas('carregando');
-      void listarDisciplinas(usuarioId).then(
-        (lista) => {
-          if (ativa) setDisciplinas(lista);
+      setEstado('carregando');
+      void Promise.all([listarDisciplinas(usuarioId), listarAtividades(usuarioId)]).then(
+        ([disciplinas, atividades]) => {
+          if (ativa) setEstado({ disciplinas, atividades });
         },
         () => {
-          if (ativa) setDisciplinas('erro');
+          if (ativa) setEstado('erro');
         },
       );
       return () => {
@@ -53,10 +60,27 @@ export function DisciplinasScreen({
     }, [tentativa, usuarioId]),
   );
 
+  const agora = useHorarioAtual();
+  const disciplinas = typeof estado === 'object' ? estado.disciplinas : [];
   const termo = normalizarTexto(busca);
-  const lista = Array.isArray(disciplinas)
-    ? disciplinas.filter((disciplina) => normalizarTexto(disciplina.nome).includes(termo))
-    : [];
+  const lista = disciplinas.filter((disciplina) =>
+    normalizarTexto(disciplina.nome).includes(termo),
+  );
+
+  const resumos = useMemo(() => {
+    const porDisciplina = new Map<string, ResumoDisciplina>();
+    if (typeof estado !== 'object') return porDisciplina;
+
+    for (const atividade of estado.atividades) {
+      const resumo = { ...(porDisciplina.get(atividade.disciplina_id) ?? resumoVazio) };
+      const situacao = situacaoAtividade(atividade, agora);
+      if (situacao === 'concluida') resumo.concluidas++;
+      else if (situacao === 'atrasada') resumo.atrasadas++;
+      else resumo.pendentes++;
+      porDisciplina.set(atividade.disciplina_id, resumo);
+    }
+    return porDisciplina;
+  }, [estado, agora]);
 
   function abrirFormulario() {
     setBusca('');
@@ -65,72 +89,78 @@ export function DisciplinasScreen({
 
   return (
     <LayoutInterno
-      titulo="Disciplinas"
+      rolavel
       acaoDireita={acaoPerfil}
-      subtitulo="Organize suas matérias e atividades."
       edges={['top', 'left', 'right']}
+      flutuante={
+        typeof estado === 'object' && (
+          <BotaoFlutuante texto="Nova disciplina" onPress={abrirFormulario} />
+        )
+      }
     >
-      {disciplinas === 'carregando' ? (
+      <TituloTela titulo="Disciplinas" subtitulo="Organize suas matérias e atividades." />
+      {estado === 'carregando' ? (
         <View style={styles.centro}>
           <ActivityIndicator color={cores.roxo} accessibilityLabel="Carregando disciplinas" />
         </View>
-      ) : disciplinas === 'erro' ? (
-        <View style={styles.centro}>
-          <MensagemErro mensagem="Não foi possível carregar as disciplinas." />
-          <Botao texto="Tentar de novo" onPress={() => setTentativa(tentativa + 1)} />
+      ) : estado === 'erro' ? (
+        <View style={styles.erro}>
+          <EstadoErro
+            mensagem="Não foi possível carregar as disciplinas."
+            tentarDeNovo={() => setTentativa(tentativa + 1)}
+          />
         </View>
       ) : (
         <>
-          <View style={styles.acoes}>
-            {disciplinas.length > 0 && (
-              <CampoTexto
-                accessibilityLabel="Buscar disciplina"
-                icone="search"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={setBusca}
-                placeholder="Buscar disciplina"
-                returnKeyType="search"
-                value={busca}
-                acao={
-                  busca !== '' && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Limpar busca"
-                      onPress={() => setBusca('')}
-                      style={styles.limpar}
-                    >
-                      <Feather aria-hidden name="x" size={19} color={cores.secundario} />
-                    </Pressable>
-                  )
-                }
-              />
-            )}
-            <Botao texto="Nova disciplina" icone="plus-circle" onPress={abrirFormulario} />
-          </View>
-          <FlatList
-            data={lista}
-            keyExtractor={(disciplina) => disciplina.id}
-            contentContainerStyle={styles.lista}
-            keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={
+          {disciplinas.length > 0 && (
+            <CampoTexto
+              accessibilityLabel="Buscar disciplina"
+              icone="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={setBusca}
+              placeholder="Buscar disciplina"
+              returnKeyType="search"
+              value={busca}
+              acao={
+                busca !== '' && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Limpar busca"
+                    onPress={() => setBusca('')}
+                    style={styles.limpar}
+                  >
+                    <Feather aria-hidden name="x" size={19} color={cores.secundario} />
+                  </Pressable>
+                )
+              }
+            />
+          )}
+          <View style={styles.conteudo}>
+            {lista.length === 0 ? (
               <EstadoVazio
-                mensagem={
-                  disciplinas.length === 0
-                    ? 'Nenhuma disciplina cadastrada'
-                    : 'Nenhuma disciplina encontrada'
-                }
+                {...(disciplinas.length === 0
+                  ? {
+                      ilustracao: 'disciplinas',
+                      titulo: 'Nenhuma disciplina cadastrada',
+                      descricao: 'Cadastre sua primeira disciplina para começar.',
+                    }
+                  : { ilustracao: 'busca', titulo: 'Nenhuma disciplina encontrada' })}
               />
-            }
-            renderItem={({ item }) => (
-              <FichaDisciplina
-                nome={item.nome}
-                descricao={item.descricao}
-                cor={item.cor}
-                onPress={() => abrirDisciplina(item.id)}
-              />
+            ) : (
+              <View style={styles.lista}>
+                {lista.map((disciplina) => (
+                  <FichaDisciplina
+                    key={disciplina.id}
+                    nome={disciplina.nome}
+                    cor={disciplina.cor}
+                    resumo={resumos.get(disciplina.id) ?? resumoVazio}
+                    onPress={() => abrirDisciplina(disciplina.id)}
+                  />
+                ))}
+              </View>
             )}
-          />
+          </View>
         </>
       )}
     </LayoutInterno>
@@ -143,11 +173,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 16,
   },
-  lista: {
-    gap: 12,
-    paddingTop: 14,
-    paddingBottom: 24,
-  },
-  acoes: { gap: 12 },
+  erro: { paddingTop: 14 },
+  conteudo: { flexGrow: 1, paddingTop: 14 },
+  lista: { gap: 12 },
   limpar: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
 });

@@ -4,7 +4,7 @@ import { atualizarLembretes } from '../services/lembretes';
 
 type Props = {
   usuarioId: string;
-  disciplinaId: string;
+  disciplinaId?: string;
   voltar: () => void;
   concluir: (disciplinaId: string) => void;
 };

@@ -41,7 +41,7 @@ type Rotas = {
   NovaDisciplina: undefined;
   EditarDisciplina: { disciplinaId: string };
   DetalhesDisciplina: { disciplinaId: string };
-  NovaAtividade: { disciplinaId: string };
+  NovaAtividade: { disciplinaId: string } | undefined;
   EditarAtividade: { atividadeId: string };
 };
 
@@ -148,6 +148,8 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
                 email={usuario.email}
                 abrirPerfil={() => navigation.navigate('Perfil')}
                 novaDisciplina={() => navigation.navigate('NovaDisciplina')}
+                novaAtividade={() => navigation.navigate('NovaAtividade')}
+                abrirAtividade={(atividadeId) => navigation.navigate('EditarAtividade', { atividadeId })}
                 abrirDisciplina={(disciplinaId) =>
                   navigation.navigate('DetalhesDisciplina', { disciplinaId })
                 }
@@ -173,11 +175,15 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
             {({ navigation, route }) => (
               <NovaAtividadeScreen
                 usuarioId={usuario.id}
-                disciplinaId={route.params.disciplinaId}
+                disciplinaId={route.params?.disciplinaId}
                 voltar={() => navigation.goBack()}
                 concluir={(disciplinaId) => {
-                  if (navigation.isFocused())
+                  if (!navigation.isFocused()) return;
+                  if (route.params?.disciplinaId) {
                     navigation.popTo('DetalhesDisciplina', { disciplinaId });
+                  } else {
+                    navigation.goBack();
+                  }
                 }}
               />
             )}

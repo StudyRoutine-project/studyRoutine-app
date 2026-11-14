@@ -2,11 +2,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { Botao } from '../components/Botao';
 import { EstadoVazio } from '../components/EstadoVazio';
-import { MensagemErro } from '../components/MensagemErro';
 import { AcaoExcluirRegistro } from '../components/AcaoExcluirRegistro';
 import { FormularioDisciplina } from '../components/disciplinas/FormularioDisciplina';
+import { EstadoErro } from '../components/EstadoErro';
 import { LayoutInterno } from '../components/LayoutInterno';
 import { buscarDisciplina, editarDisciplina, excluirDisciplina } from '../database/disciplinas';
 import { atualizarLembretes } from '../services/lembretes';
@@ -83,12 +82,12 @@ export function EditarDisciplinaScreen({
         {estado === 'carregando' ? (
           <ActivityIndicator color={cores.roxo} accessibilityLabel="Carregando disciplina" />
         ) : estado === 'erro' ? (
-          <>
-            <MensagemErro mensagem="Não foi possível carregar a disciplina." />
-            <Botao texto="Tentar de novo" onPress={() => setTentativa((atual) => atual + 1)} />
-          </>
+          <EstadoErro
+            mensagem="Não foi possível carregar a disciplina."
+            tentarDeNovo={() => setTentativa((atual) => atual + 1)}
+          />
         ) : (
-          <EstadoVazio mensagem="Disciplina indisponível" />
+          <EstadoVazio ilustracao="busca" titulo="Disciplina indisponível" />
         )}
       </View>
     </LayoutInterno>

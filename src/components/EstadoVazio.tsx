@@ -2,21 +2,50 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { cores } from '../theme/cores';
 
-const ilustracao = require('../../assets/ilustracao.png');
+import type { ReactNode } from 'react';
 
-export function EstadoVazio({ mensagem }: { mensagem: string }) {
+const ilustracoes = {
+  atividades: require('../../assets/atividades.png'),
+  disciplinas: require('../../assets/disciplinas.png'),
+  busca: require('../../assets/busca.png'),
+  emDia: require('../../assets/em-dia.png'),
+};
+
+type Props = {
+  ilustracao: keyof typeof ilustracoes;
+  titulo: string;
+  descricao?: string;
+  acao?: ReactNode;
+};
+
+export function EstadoVazio({ ilustracao, titulo, descricao, acao }: Props) {
   return (
-    <View style={styles.conteudo}>
-      <Image source={ilustracao} resizeMode="contain" aria-hidden style={styles.ilustracao} />
-      <Text accessibilityLiveRegion="polite" style={styles.mensagem}>
-        {mensagem}
-      </Text>
+    <View accessibilityLiveRegion="polite" style={styles.conteudo}>
+      <Image
+        source={ilustracoes[ilustracao]}
+        style={styles.ilustracao}
+        resizeMode="contain"
+        aria-hidden
+      />
+      <View style={styles.textos}>
+        <Text style={styles.titulo}>{titulo}</Text>
+        {descricao && <Text style={styles.descricao}>{descricao}</Text>}
+      </View>
+      {acao}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  conteudo: { alignItems: 'center', gap: 12, paddingTop: 22 },
-  ilustracao: { width: '100%', maxWidth: 220, height: 148 },
-  mensagem: { color: cores.secundario, fontSize: 16, fontWeight: '600', textAlign: 'center' },
+  conteudo: { alignItems: 'center', gap: 14, paddingVertical: 20, paddingHorizontal: 12 },
+  ilustracao: { width: 152, height: 114 },
+  textos: { alignItems: 'center', gap: 4 },
+  titulo: { color: cores.texto, fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  descricao: {
+    maxWidth: 280,
+    color: cores.secundario,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
 });

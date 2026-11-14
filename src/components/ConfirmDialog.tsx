@@ -40,6 +40,12 @@ export function ConfirmDialog({
       }}
     >
       <View style={styles.fundo}>
+        <Pressable
+          accessible={false}
+          disabled={ocupado}
+          onPress={onCancelar}
+          style={StyleSheet.absoluteFill}
+        />
         <View style={styles.dialogo} accessibilityViewIsModal>
           <Text accessibilityRole="header" style={styles.titulo}>
             {titulo}

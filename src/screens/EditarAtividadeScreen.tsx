@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 
 import { AcaoExcluirRegistro } from '../components/AcaoExcluirRegistro';
-import { Botao } from '../components/Botao';
 import { EstadoVazio } from '../components/EstadoVazio';
+import { EstadoErro } from '../components/EstadoErro';
 import { LayoutInterno } from '../components/LayoutInterno';
-import { MensagemErro } from '../components/MensagemErro';
 import { FormularioAtividade } from '../components/atividades/FormularioAtividade';
 import { buscarAtividade, editarAtividade, excluirAtividade } from '../database/atividades';
 import { atualizarLembretes, observarAtividadesDosLembretes } from '../services/lembretes';
@@ -56,12 +55,12 @@ export function EditarAtividadeScreen({
         {estado === 'carregando' ? (
           <ActivityIndicator color={cores.roxo} accessibilityLabel="Carregando atividade" />
         ) : estado === 'erro' ? (
-          <View style={styles.erro}>
-            <MensagemErro mensagem="Não foi possível carregar a atividade." />
-            <Botao texto="Tentar de novo" onPress={() => setTentativa((atual) => atual + 1)} />
-          </View>
+          <EstadoErro
+            mensagem="Não foi possível carregar a atividade."
+            tentarDeNovo={() => setTentativa((atual) => atual + 1)}
+          />
         ) : (
-          <EstadoVazio mensagem="Atividade indisponível" />
+          <EstadoVazio ilustracao="busca" titulo="Atividade indisponível" />
         )}
       </LayoutInterno>
     );
@@ -94,5 +93,3 @@ export function EditarAtividadeScreen({
     />
   );
 }
-
-const styles = StyleSheet.create({ erro: { gap: 12 } });

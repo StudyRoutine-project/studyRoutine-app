@@ -2,14 +2,15 @@ import Feather from '@expo/vector-icons/Feather';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { cores } from '../../theme/cores';
+import { FiguraIcone } from '../FiguraIcone';
 
-import type { ComponentProps } from 'react';
+import type { Icone } from '../FiguraIcone';
 
 type Props = {
   rotulo: string;
   valor?: string;
   placeholder: string;
-  icone: ComponentProps<typeof Feather>['name'];
+  icone: Icone;
   cor?: string;
   iconeComFundo?: boolean;
   erro?: string;
@@ -30,7 +31,7 @@ export function CampoSelecao({
   desativado,
   onPress,
 }: Props) {
-  const figura = <Feather name={icone} color={cor} size={iconeComFundo ? 18 : 19} aria-hidden />;
+  const figura = <FiguraIcone icone={icone} cor={cor} tamanho={iconeComFundo ? 20 : 19} />;
 
   return (
     <View style={styles.campo}>

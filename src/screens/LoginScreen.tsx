@@ -1,10 +1,11 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { MensagemErro } from '../components/MensagemErro';
 import { Botao } from '../components/Botao';
+import { BotaoFechar } from '../components/BotaoFechar';
 import { CampoConta } from '../components/conta/CampoConta';
 import { ContaLayout } from '../components/conta/ContaLayout';
 import { LinkConta } from '../components/conta/LinkConta';
@@ -79,17 +80,7 @@ export function LoginScreen({
             <Text accessibilityRole="alert" style={styles.mensagem}>
               {mensagem}
             </Text>
-            <Pressable
-              accessibilityLabel="Fechar aviso"
-              accessibilityRole="button"
-              onPress={fecharAviso}
-              style={({ pressed }) => [
-                styles.fecharAviso,
-                pressed && styles.fecharAvisoPressionado,
-              ]}
-            >
-              <Feather accessible={false} aria-hidden color={cores.texto} name="x" size={18} />
-            </Pressable>
+            <BotaoFechar rotulo="Fechar aviso" onPress={fecharAviso} />
           </View>
         </View>
       )}
@@ -197,16 +188,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
-  },
-  fecharAviso: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-  },
-  fecharAvisoPressionado: {
-    backgroundColor: cores.branco,
   },
   mensagem: {
     flex: 1,
