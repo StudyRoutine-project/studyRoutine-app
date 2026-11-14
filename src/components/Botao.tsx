@@ -46,7 +46,7 @@ export function Botao({
       ]}
     >
       <LinearGradient
-        colors={[cores.roxoClaro, cores.roxo, '#2E1B88']}
+        colors={[cores.roxoClaro, cores.roxo, cores.roxoEscuro]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[

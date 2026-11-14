@@ -12,8 +12,8 @@ type Props = {
 
 export function CabecalhoMarca({ acao, acaoDireita, compacto = false }: Props) {
   return (
-    <View style={styles.cabecalho}>
-      {acao}
+    <View style={[styles.cabecalho, !!acao && styles.comAcao]}>
+      {acao && <View style={styles.acao}>{acao}</View>}
       <Image
         accessible
         accessibilityLabel="StudyRoutine"
@@ -28,6 +28,8 @@ export function CabecalhoMarca({ acao, acaoDireita, compacto = false }: Props) {
 
 const styles = StyleSheet.create({
   cabecalho: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  comAcao: { gap: 2 },
+  acao: { marginLeft: -14 },
   logo: {
     flexShrink: 1,
     width: '72%',

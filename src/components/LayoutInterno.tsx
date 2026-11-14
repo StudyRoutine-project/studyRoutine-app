@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cores } from '../theme/cores';
@@ -15,6 +15,8 @@ type Props = {
   voltar?: () => void;
   voltarDesativado?: boolean;
   edges?: SafeAreaViewProps['edges'];
+  rolavel?: boolean;
+  flutuante?: ReactNode;
   children: ReactNode;
 };
 
@@ -25,19 +27,46 @@ export function LayoutInterno({
   voltar,
   voltarDesativado,
   edges,
+  rolavel = false,
+  flutuante,
   children,
 }: Props) {
+  const corpo = (
+    <>
+      <CabecalhoMarca
+        compacto
+        acao={voltar && <BotaoVoltar onPress={voltar} desativado={voltarDesativado} />}
+        acaoDireita={acaoDireita}
+      />
+      {titulo && <TituloTela titulo={titulo} subtitulo={subtitulo} />}
+      {children}
+    </>
+  );
+
   return (
     <SafeAreaView edges={edges} style={styles.tela}>
-      <View style={styles.conteudo}>
-        <CabecalhoMarca
-          compacto
-          acao={voltar && <BotaoVoltar onPress={voltar} desativado={voltarDesativado} />}
-          acaoDireita={acaoDireita}
-        />
-        {titulo && <TituloTela titulo={titulo} subtitulo={subtitulo} />}
-        {children}
-      </View>
+      {rolavel ? (
+        <ScrollView
+          contentContainerStyle={[
+            styles.coluna,
+            styles.conteudoRolavel,
+            !!flutuante && styles.espacoFlutuante,
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {corpo}
+        </ScrollView>
+      ) : (
+        <View style={[styles.coluna, styles.conteudoFixo]}>{corpo}</View>
+      )}
+      {flutuante && (
+        <View pointerEvents="box-none" style={styles.camadaFlutuante}>
+          <View pointerEvents="box-none" style={styles.colunaFlutuante}>
+            {flutuante}
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -55,11 +84,15 @@ export function TituloTela({
     <View style={[styles.apresentacao, acao && styles.apresentacaoComAcao]}>
       <View style={[styles.textos, acao && styles.textosComAcao]}>
         <View style={acao && styles.linhaTitulo}>
-          <Text accessibilityRole="header" style={styles.titulo}>
+          <Text accessibilityRole="header" numberOfLines={2} style={styles.titulo}>
             {titulo}
           </Text>
         </View>
-        {subtitulo && <Text style={styles.subtitulo}>{subtitulo}</Text>}
+        {subtitulo && (
+          <Text numberOfLines={3} style={styles.subtitulo}>
+            {subtitulo}
+          </Text>
+        )}
       </View>
       {acao}
     </View>
@@ -71,14 +104,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: cores.fundo,
   },
-  conteudo: {
-    flex: 1,
+  coluna: {
     alignSelf: 'center',
     width: '100%',
     maxWidth: 520,
     paddingHorizontal: 24,
     paddingTop: 28,
   },
+  conteudoFixo: { flex: 1 },
+  conteudoRolavel: { flexGrow: 1, paddingBottom: 32 },
+  espacoFlutuante: { paddingBottom: 96 },
+  camadaFlutuante: { ...StyleSheet.absoluteFill, alignItems: 'center' },
+  colunaFlutuante: { flex: 1, width: '100%', maxWidth: 520 },
   apresentacao: {
     paddingTop: 24,
     paddingBottom: 18,
@@ -89,9 +126,9 @@ const styles = StyleSheet.create({
   linhaTitulo: { minHeight: 44, justifyContent: 'center' },
   titulo: {
     color: cores.texto,
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '700',
-    letterSpacing: -1.1,
+    letterSpacing: -0.8,
   },
   subtitulo: {
     color: cores.secundario,

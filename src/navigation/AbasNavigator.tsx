@@ -1,6 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AvatarIniciais } from '../components/AvatarIniciais';
 import { AgendaScreen } from '../screens/AgendaScreen';
@@ -43,6 +44,7 @@ export function AbasNavigator({
   abrirAtividade,
   abrirDisciplina,
 }: Props) {
+  const { bottom } = useSafeAreaInsets();
   const acaoPerfil = (
     <Pressable
       accessibilityRole="button"
@@ -61,10 +63,14 @@ export function AbasNavigator({
         tabBarActiveTintColor: cores.roxo,
         tabBarInactiveTintColor: cores.secundario,
         tabBarHideOnKeyboard: true,
-        tabBarStyle: styles.barra,
+        tabBarStyle: [styles.barra, { height: 68 + bottom, paddingBottom: bottom + 8 }],
         tabBarLabelStyle: styles.rotulo,
-        tabBarIcon: ({ color, size }) => (
-          <Feather name={icones[route.name]} color={color} size={size} aria-hidden />
+        tabBarIconStyle: styles.areaIcone,
+        tabBarIcon: ({ color, focused }) => (
+          <View style={styles.icone}>
+            <View style={[styles.indicador, focused && styles.indicadorAtivo]} />
+            <Feather name={icones[route.name]} color={color} size={22} aria-hidden />
+          </View>
         ),
       })}
     >
@@ -96,8 +102,19 @@ export function AbasNavigator({
 }
 
 const styles = StyleSheet.create({
-  barra: { backgroundColor: cores.branco, borderTopColor: cores.borda },
-  rotulo: { fontSize: 12, fontWeight: '600' },
+  barra: { paddingTop: 0, backgroundColor: cores.branco, borderTopColor: cores.borda },
+  rotulo: { marginTop: 2, fontSize: 12, fontWeight: '600' },
+  areaIcone: { width: 32, height: 32 },
+  icone: { alignItems: 'center', paddingTop: 10 },
+  indicador: {
+    position: 'absolute',
+    top: 0,
+    width: 24,
+    height: 3,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
+  },
+  indicadorAtivo: { backgroundColor: cores.roxo },
   perfil: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   pressionado: { opacity: 0.75 },
 });
