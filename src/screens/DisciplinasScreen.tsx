@@ -7,7 +7,7 @@ import { BotaoFlutuante } from '../components/BotaoFlutuante';
 import { CampoTexto } from '../components/CampoTexto';
 import { EstadoErro } from '../components/EstadoErro';
 import { EstadoVazio } from '../components/EstadoVazio';
-import { situacaoAtividade } from '../components/atividades/situacaoAtividade';
+import { situacaoAtividade } from '../utils/situacaoAtividade';
 import { FichaDisciplina } from '../components/disciplinas/FichaDisciplina';
 import { LayoutInterno, TituloTela } from '../components/LayoutInterno';
 import { listarAtividades } from '../database/atividades';

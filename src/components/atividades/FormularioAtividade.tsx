@@ -184,7 +184,11 @@ export function FormularioAtividade({
           style={styles.corpo}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.formulario}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            style={styles.campos}
+            contentContainerStyle={styles.formulario}
+          >
             {concluida !== undefined && (
               <CheckboxAtividade
                 rotulo="Atividade concluída"
@@ -329,8 +333,9 @@ export function FormularioAtividade({
 
 const styles = StyleSheet.create({
   corpo: { flex: 1 },
+  campos: { flexGrow: 0 },
   formulario: { gap: 16, paddingBottom: 12 },
-  rodape: { gap: 8, paddingTop: 8, paddingBottom: 12 },
+  rodape: { gap: 8, paddingTop: 12, paddingBottom: 12 },
   erro: { gap: 12 },
   prazo: { gap: 12 },
   prazoEmLinha: { flexDirection: 'row' },
