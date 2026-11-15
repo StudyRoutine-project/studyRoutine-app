@@ -10,6 +10,7 @@ import type { useConclusaoAtividade } from '../../hooks/useConclusaoAtividade';
 type Props = {
   atividades: Atividade[];
   agora: number;
+  somenteHorario?: boolean;
   disciplinas?: Map<string, Pick<Disciplina, 'nome'>>;
   conclusao: ReturnType<typeof useConclusaoAtividade>;
   abrirAtividade: (id: string) => void;
@@ -18,11 +19,12 @@ type Props = {
 export function ListaAtividades({
   atividades,
   agora,
+  somenteHorario,
   disciplinas,
   conclusao,
   abrirAtividade,
 }: Props) {
-  const { alterarConclusao, atividadeSalvando, erroConclusao, exibir } = conclusao;
+  const { alterarConclusao, erroConclusao, exibir, gravando } = conclusao;
 
   return (
     <View style={styles.lista}>
@@ -32,10 +34,11 @@ export function ListaAtividades({
             atividade={exibir(atividade)}
             disciplina={disciplinas?.get(atividade.disciplina_id)?.nome}
             agora={agora}
+            somenteHorario={somenteHorario}
             onPress={() => abrirAtividade(atividade.id)}
             onAlterarConclusao={() => void alterarConclusao(atividade)}
-            salvando={atividadeSalvando === atividade.id}
-            conclusaoDesativada={atividadeSalvando !== undefined}
+            salvando={gravando(atividade.id)}
+            conclusaoDesativada={gravando(atividade.id)}
           />
           {erroConclusao === atividade.id && (
             <MensagemErro mensagem="Não foi possível atualizar a atividade. Tente de novo." />

@@ -21,7 +21,7 @@ type Props = {
   email?: string;
   abrirPerfil: () => void;
   novaDisciplina: () => void;
-  novaAtividade: () => void;
+  novaAtividade: (data?: string) => void;
   abrirAtividade: (atividadeId: string) => void;
   abrirDisciplina: (disciplinaId: string) => void;
 };
@@ -81,7 +81,7 @@ export function AbasNavigator({
             nome={nome}
             acaoPerfil={acaoPerfil}
             novaDisciplina={novaDisciplina}
-            novaAtividade={novaAtividade}
+            novaAtividade={() => novaAtividade()}
             abrirAtividade={abrirAtividade}
           />
         )}
@@ -96,7 +96,17 @@ export function AbasNavigator({
           />
         )}
       </Tab.Screen>
-      <Tab.Screen name="Agenda">{() => <AgendaScreen acaoPerfil={acaoPerfil} />}</Tab.Screen>
+      <Tab.Screen name="Agenda">
+        {() => (
+          <AgendaScreen
+            usuarioId={usuarioId}
+            acaoPerfil={acaoPerfil}
+            abrirAtividade={abrirAtividade}
+            novaAtividade={novaAtividade}
+            novaDisciplina={novaDisciplina}
+          />
+        )}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }

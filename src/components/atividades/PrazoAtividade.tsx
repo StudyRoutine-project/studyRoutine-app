@@ -2,13 +2,15 @@ import { StyleSheet, Text } from 'react-native';
 
 import { cores } from '../../theme/cores';
 import { descreverPrazo, formatarPrazoResumido } from '../../utils/datas';
-import { situacaoAtividade } from './situacaoAtividade';
+import { situacaoAtividade } from '../../utils/situacaoAtividade';
 
 import type { Atividade } from '../../database/atividades';
+import type { Situacao } from '../../utils/situacaoAtividade';
 
 type Props = {
   atividade: Pick<Atividade, 'concluida' | 'adiada' | 'data' | 'horario'>;
   agora: number;
+  somenteHorario?: boolean;
 };
 
 const corSituacao = {
@@ -18,13 +20,22 @@ const corSituacao = {
   concluida: cores.secundario,
 };
 
-export function PrazoAtividade({ atividade, agora }: Props) {
+function descreverHorario(horario: string | null, situacao: Situacao) {
+  const hora = horario?.slice(0, 5);
+  if (!hora) return 'Sem horário';
+  return situacao === 'atrasada' ? `Venceu às ${hora}` : `Às ${hora}`;
+}
+
+export function PrazoAtividade({ atividade, agora, somenteHorario = false }: Props) {
   const situacao = situacaoAtividade(atividade, agora);
   const adiada = atividade.adiada === 1 && (situacao === 'hoje' || situacao === 'pendente');
+  const texto = somenteHorario
+    ? descreverHorario(atividade.horario, situacao)
+    : situacao === 'concluida'
+      ? formatarPrazoResumido(atividade.data, atividade.horario)
+      : descreverPrazo(atividade.data, atividade.horario, agora);
 
-  if (situacao === 'concluida') {
-    return <Text>{formatarPrazoResumido(atividade.data, atividade.horario)}</Text>;
-  }
+  if (situacao === 'concluida') return <Text>{texto}</Text>;
 
   return (
     <Text
@@ -33,7 +44,7 @@ export function PrazoAtividade({ atividade, agora }: Props) {
         situacao !== 'pendente' && styles.destaque,
       ]}
     >
-      {descreverPrazo(atividade.data, atividade.horario, agora)}
+      {texto}
       {adiada && ' (adiada)'}
     </Text>
   );

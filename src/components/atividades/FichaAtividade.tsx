@@ -13,6 +13,7 @@ type Props = {
   atividade: Atividade;
   disciplina?: string;
   agora: number;
+  somenteHorario?: boolean;
   onPress: () => void;
   onAlterarConclusao: () => void;
   salvando: boolean;
@@ -23,6 +24,7 @@ export function FichaAtividade({
   atividade,
   disciplina,
   agora,
+  somenteHorario,
   onPress,
   onAlterarConclusao,
   salvando,
@@ -50,7 +52,7 @@ export function FichaAtividade({
           </Text>
           <Text numberOfLines={1} style={styles.detalhes}>
             {disciplina ? `${disciplina} · ` : `${tipo.rotulo} · `}
-            <PrazoAtividade atividade={atividade} agora={agora} />
+            <PrazoAtividade atividade={atividade} agora={agora} somenteHorario={somenteHorario} />
           </Text>
         </View>
       </Pressable>

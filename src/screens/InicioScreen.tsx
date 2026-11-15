@@ -10,11 +10,11 @@ import { EstadoVazio } from '../components/EstadoVazio';
 import { LayoutInterno } from '../components/LayoutInterno';
 import { ResumoNumeros } from '../components/ResumoNumeros';
 import { ListaAtividades } from '../components/atividades/ListaAtividades';
-import { agruparPorSituacao } from '../components/atividades/situacaoAtividade';
+import { agruparPorSituacao } from '../utils/situacaoAtividade';
 import { BannerInicio } from '../components/inicio/BannerInicio';
 import { listarAtividades } from '../database/atividades';
 import { listarDisciplinas } from '../database/disciplinas';
-import { useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
+import { marcarConclusao, useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
 import { useHorarioAtual } from '../hooks/useHorarioAtual';
 import { observarAtividadesDosLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
@@ -88,16 +88,9 @@ export function InicioScreen({
   );
 
   const conclusao = useConclusaoAtividade(usuarioId, (id, concluida) => {
-    setDados((atual) => {
-      if (!atual) return atual;
-
-      return {
-        ...atual,
-        atividades: atual.atividades.map((atividade) =>
-          atividade.id === id ? { ...atividade, concluida } : atividade,
-        ),
-      };
-    });
+    setDados((atual) =>
+      atual ? { ...atual, atividades: marcarConclusao(atual.atividades, id, concluida) } : atual,
+    );
   });
 
   const resumo = useMemo(() => {
@@ -113,12 +106,17 @@ export function InicioScreen({
 
     return {
       disciplinas,
-      grupos,
       secoes,
       total: dados.atividades.length,
       depois: grupos.pendente.slice(limiteProximas),
     };
   }, [dados, agora]);
+
+  const { aplicar } = conclusao;
+  const contagem = useMemo(
+    () => dados && agruparPorSituacao(aplicar(dados.atividades), agora),
+    [aplicar, dados, agora],
+  );
 
   const primeiroNome = nome.trim().split(/\s+/)[0];
   const data = formatoData.format(agora);
@@ -177,8 +175,8 @@ export function InicioScreen({
               />
             ) : (
               <ResumoNumeros
-                atrasadas={resumo.grupos.atrasada.length}
-                concluidas={resumo.grupos.concluida.length}
+                atrasadas={contagem?.atrasada.length ?? 0}
+                concluidas={contagem?.concluida.length ?? 0}
                 total={resumo.total}
               />
             )}

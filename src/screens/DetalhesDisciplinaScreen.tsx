@@ -11,16 +11,13 @@ import { LayoutInterno, TituloTela } from '../components/LayoutInterno';
 import { ResumoNumeros } from '../components/ResumoNumeros';
 import { FiltroStatusAtividades } from '../components/atividades/FiltroStatusAtividades';
 import { ListaAtividades } from '../components/atividades/ListaAtividades';
-import {
-  agruparPorSituacao,
-  ordenarPorUrgencia,
-} from '../components/atividades/situacaoAtividade';
 import { listarAtividadesDisciplina } from '../database/atividades';
 import { buscarDisciplina } from '../database/disciplinas';
-import { useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
+import { marcarConclusao, useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
 import { useHorarioAtual } from '../hooks/useHorarioAtual';
 import { observarAtividadesDosLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
+import { agruparPorSituacao } from '../utils/situacaoAtividade';
 
 import type { ComponentProps } from 'react';
 import type { Atividade } from '../database/atividades';
@@ -45,6 +42,16 @@ const vazioPorFiltro = {
   concluidas: { ilustracao: 'atividades', titulo: 'Nenhuma atividade concluída' },
 } satisfies Record<StatusAtividades, ComponentProps<typeof EstadoVazio>>;
 
+function separarPorStatus(atividades: Atividade[], agora: number) {
+  const { atrasada, hoje, pendente, concluida } = agruparPorSituacao(atividades, agora);
+  return {
+    todas: atividades,
+    pendentes: [...hoje, ...pendente],
+    atrasadas: atrasada,
+    concluidas: concluida,
+  } satisfies Record<StatusAtividades, Atividade[]>;
+}
+
 export function DetalhesDisciplinaScreen({
   usuarioId,
   disciplinaId,
@@ -60,13 +67,7 @@ export function DetalhesDisciplinaScreen({
   const conclusao = useConclusaoAtividade(usuarioId, (id, concluida) => {
     setEstado((atual) => {
       if (!atual || typeof atual === 'string') return atual;
-
-      return {
-        ...atual,
-        atividades: atual.atividades.map((item) =>
-          item.id === id ? { ...item, concluida } : item,
-        ),
-      };
+      return { ...atual, atividades: marcarConclusao(atual.atividades, id, concluida) };
     });
   });
 
@@ -109,16 +110,20 @@ export function DetalhesDisciplinaScreen({
   );
 
   const lista = estado && typeof estado === 'object' ? estado : null;
-  const atividadesPorStatus = useMemo(() => {
-    const atividades = lista?.atividades ?? [];
-    const { atrasada, hoje, pendente, concluida } = agruparPorSituacao(atividades, agora);
+  const { aplicar } = conclusao;
+  const atividadesPorStatus = useMemo(
+    () => separarPorStatus(lista?.atividades ?? [], agora),
+    [lista?.atividades, agora],
+  );
+  const contagens = useMemo(() => {
+    const exibidas = separarPorStatus(aplicar(lista?.atividades ?? []), agora);
     return {
-      todas: ordenarPorUrgencia(atividades, agora),
-      pendentes: [...hoje, ...pendente],
-      atrasadas: atrasada,
-      concluidas: concluida,
-    } satisfies Record<StatusAtividades, Atividade[]>;
-  }, [lista?.atividades, agora]);
+      todas: exibidas.todas.length,
+      pendentes: exibidas.pendentes.length,
+      atrasadas: exibidas.atrasadas.length,
+      concluidas: exibidas.concluidas.length,
+    } satisfies Record<StatusAtividades, number>;
+  }, [aplicar, lista?.atividades, agora]);
 
   if (!lista) {
     return (
@@ -138,14 +143,8 @@ export function DetalhesDisciplinaScreen({
   }
 
   const { disciplina } = lista;
-  const total = atividadesPorStatus.todas.length;
-  const concluidas = atividadesPorStatus.concluidas.length;
-  const contagens = {
-    todas: total,
-    pendentes: atividadesPorStatus.pendentes.length,
-    atrasadas: atividadesPorStatus.atrasadas.length,
-    concluidas,
-  };
+  const total = contagens.todas;
+  const concluidas = contagens.concluidas;
   const atividades = atividadesPorStatus[filtro];
 
   return (
