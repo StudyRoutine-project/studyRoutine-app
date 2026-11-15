@@ -5,17 +5,18 @@ import { atualizarLembretes } from '../services/lembretes';
 type Props = {
   usuarioId: string;
   disciplinaId?: string;
+  data?: string;
   voltar: () => void;
   concluir: (disciplinaId: string) => void;
 };
 
-export function NovaAtividadeScreen({ usuarioId, disciplinaId, voltar, concluir }: Props) {
+export function NovaAtividadeScreen({ usuarioId, disciplinaId, data, voltar, concluir }: Props) {
   return (
     <FormularioAtividade
       usuarioId={usuarioId}
       tituloTela="Nova atividade"
       subtitulo="Organize o que você precisa fazer."
-      valoresIniciais={{ disciplina_id: disciplinaId }}
+      valoresIniciais={{ disciplina_id: disciplinaId, data }}
       salvarAtividade={async (dados) => {
         await cadastrarAtividade(usuarioId, dados);
         atualizarLembretes(usuarioId);
