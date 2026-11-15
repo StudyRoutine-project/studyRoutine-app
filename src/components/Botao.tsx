@@ -3,18 +3,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text } from 'react-native';
 
+import type { ComponentProps } from 'react';
 import type { ViewStyle } from 'react-native';
 
-import { cores } from '../../theme/cores';
+import { cores } from '../theme/cores';
 
 type Props = {
   texto: string;
   onPress: () => void;
   ocupado?: boolean;
   concluido?: boolean;
+  icone?: ComponentProps<typeof Feather>['name'];
+  compacto?: boolean;
 };
 
-export function BotaoConta({ texto, onPress, ocupado = false, concluido = false }: Props) {
+export function Botao({
+  texto,
+  onPress,
+  ocupado = false,
+  concluido = false,
+  icone,
+  compacto = false,
+}: Props) {
   const [sobCursor, setSobCursor] = useState(false);
   const desativado = ocupado || concluido;
 
@@ -30,28 +40,44 @@ export function BotaoConta({ texto, onPress, ocupado = false, concluido = false 
       onPress={onPress}
       style={({ pressed }) => [
         styles.botao,
+        compacto && styles.botaoCompacto,
         sobCursor && !desativado && styles.hover,
         pressed && styles.pressao,
       ]}
     >
       <LinearGradient
-        colors={[cores.roxoClaro, cores.roxo, '#2E1B88']}
+        colors={[cores.roxoClaro, cores.roxo, cores.roxoEscuro]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.gradiente}
+        style={[
+          styles.gradiente,
+          compacto && styles.gradienteCompacto,
+          compacto && desativado && styles.gradienteComStatus,
+        ]}
       >
-        <Text style={styles.texto}>{texto}</Text>
-        {ocupado ? (
-          <ActivityIndicator color={cores.branco} style={styles.icone} />
-        ) : concluido && (
+        {icone && !ocupado && (
           <Feather
             accessible={false}
             aria-hidden
+            name={icone}
+            size={compacto ? 17 : 19}
             color={cores.branco}
-            name="check"
-            size={21}
-            style={styles.icone}
           />
+        )}
+        <Text style={[styles.texto, compacto && styles.textoCompacto]}>{texto}</Text>
+        {ocupado ? (
+          <ActivityIndicator color={cores.branco} style={styles.icone} />
+        ) : (
+          concluido && (
+            <Feather
+              accessible={false}
+              aria-hidden
+              color={cores.branco}
+              name="check"
+              size={21}
+              style={styles.icone}
+            />
+          )
         )}
       </LinearGradient>
     </Pressable>
@@ -66,6 +92,7 @@ const styles = StyleSheet.create({
       web: { transitionProperty: 'opacity, transform', transitionDuration: '140ms' } as ViewStyle,
     }),
   },
+  botaoCompacto: { borderRadius: 12 },
   hover: {
     opacity: 0.92,
   },
@@ -75,17 +102,23 @@ const styles = StyleSheet.create({
   },
   gradiente: {
     alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
     justifyContent: 'center',
     minHeight: 54,
     paddingHorizontal: 52,
     paddingVertical: 12,
   },
+  gradienteCompacto: { minHeight: 44, paddingHorizontal: 16, paddingVertical: 9 },
+  gradienteComStatus: { paddingHorizontal: 44 },
   texto: {
+    flexShrink: 1,
     color: cores.branco,
     fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
   },
+  textoCompacto: { fontSize: 14 },
   icone: {
     position: 'absolute',
     right: 18,

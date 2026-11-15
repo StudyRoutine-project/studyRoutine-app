@@ -15,6 +15,7 @@
       "favicon": "./assets/logo.png"
     },
     "plugins": [
+      "expo-notifications",
       [
         "expo-secure-store",
         {

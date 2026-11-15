@@ -1,16 +1,36 @@
+import { useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, Platform, StyleSheet, View } from 'react-native';
 
+import { observarDadosSincronizados } from '../database/dadosSincronizados';
 import { useSessao } from '../hooks/useSessao';
+import { useSincronizacao } from '../hooks/useSincronizacao';
 import { CadastroScreen } from '../screens/CadastroScreen';
-import { InicioScreen } from '../screens/InicioScreen';
+import { DetalhesDisciplinaScreen } from '../screens/DetalhesDisciplinaScreen';
+import { EditarAtividadeScreen } from '../screens/EditarAtividadeScreen';
+import { EditarDisciplinaScreen } from '../screens/EditarDisciplinaScreen';
 import { LoginScreen } from '../screens/LoginScreen';
+import { NovaAtividadeScreen } from '../screens/NovaAtividadeScreen';
+import { NovaDisciplinaScreen } from '../screens/NovaDisciplinaScreen';
+import { PerfilScreen } from '../screens/PerfilScreen';
 import { SolicitarRecuperacaoScreen } from '../screens/SolicitarRecuperacaoScreen';
 import { VerificarCodigoScreen } from '../screens/VerificarCodigoScreen';
+import {
+  acaoAdiarLembrete,
+  acaoConcluirLembrete,
+  aplicarAcaoDoLembrete,
+  atividadeDoLembrete,
+  cancelarLembretes,
+  restaurarLembretes,
+} from '../services/lembretes';
 import { cores } from '../theme/cores';
+import { AbasNavigator } from './AbasNavigator';
 
+import type { NavigationContainerRef } from '@react-navigation/native';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { NotificationResponse } from 'expo-notifications';
 import type { AvisoConta, FinalidadeCodigo } from '../services/autenticacao';
 
 type Rotas = {
@@ -18,14 +38,102 @@ type Rotas = {
   Cadastro: { reenviarPara?: string } | undefined;
   SolicitarRecuperacao: undefined;
   VerificarCodigo: { email: string; finalidade: FinalidadeCodigo };
-  Inicio: undefined;
+  Abas: undefined;
+  Perfil: undefined;
+  NovaDisciplina: undefined;
+  EditarDisciplina: { disciplinaId: string };
+  DetalhesDisciplina: { disciplinaId: string };
+  NovaAtividade: { disciplinaId?: string; data?: string } | undefined;
+  EditarAtividade: { atividadeId: string };
 };
 
 const Stack = createNativeStackNavigator<Rotas>();
 
 export function RootNavigator({ client }: { client: SupabaseClient }) {
   const usuario = useSessao(client);
+  const navigation = useNavigation<NavigationContainerRef<Rotas>>();
   const [aviso, setAviso] = useState<AvisoConta | null>(null);
+  const nome = usuario?.user_metadata.nome;
+  const nomeUsuario = typeof nome === 'string' ? nome.trim() : '';
+  const usuarioId = usuario?.id;
+  const { estado: sincronizacao, sincronizar } = useSincronizacao(client, usuarioId);
+
+  useEffect(() => {
+    if (!usuarioId) return;
+
+    void restaurarLembretes(usuarioId).catch(() => {});
+    const pararObservacao = observarDadosSincronizados(usuarioId, () => {
+      void restaurarLembretes(usuarioId).catch(() => {});
+    });
+    return () => {
+      pararObservacao();
+      void cancelarLembretes(usuarioId).catch(() => {});
+    };
+  }, [usuarioId]);
+
+  useEffect(() => {
+    if (!usuarioId || (Platform.OS !== 'android' && Platform.OS !== 'ios')) return;
+
+    const contaId = usuarioId;
+    let respostaPendente: NotificationResponse | undefined;
+    let ultimaResposta: string | undefined;
+
+    function tratarRespostaPendente() {
+      if (
+        !respostaPendente ||
+        !navigation.isReady() ||
+        (AppState.currentState && AppState.currentState !== 'active')
+      ) return;
+
+      const resposta = respostaPendente;
+      respostaPendente = undefined;
+      Notifications.clearLastNotificationResponse();
+
+      const atividadeId = atividadeDoLembrete(resposta, contaId);
+      if (!atividadeId) return;
+
+      navigation.navigate('EditarAtividade', { atividadeId });
+    }
+
+    function receberResposta(resposta: NotificationResponse) {
+      const { date, request } = resposta.notification;
+      const chave = `${request.identifier}/${date}/${resposta.actionIdentifier}`;
+      if (chave === ultimaResposta) return;
+
+      ultimaResposta = chave;
+      if (
+        resposta.actionIdentifier === acaoAdiarLembrete ||
+        resposta.actionIdentifier === acaoConcluirLembrete
+      ) {
+        Notifications.clearLastNotificationResponse();
+        void aplicarAcaoDoLembrete(contaId, resposta).catch(() => {
+          Alert.alert('Lembretes', 'Não foi possível aplicar a ação. Confira a atividade no app.');
+        });
+      } else if (resposta.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+        respostaPendente = resposta;
+        tratarRespostaPendente();
+      }
+    }
+
+    function lerUltimaResposta() {
+      const resposta = Notifications.getLastNotificationResponse();
+      if (resposta) receberResposta(resposta);
+      tratarRespostaPendente();
+    }
+
+    const removerPronto = navigation.addListener('ready', tratarRespostaPendente);
+    const assinatura = Notifications.addNotificationResponseReceivedListener(receberResposta);
+    const estadoApp = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') lerUltimaResposta();
+    });
+    lerUltimaResposta();
+
+    return () => {
+      assinatura.remove();
+      estadoApp.remove();
+      removerPronto();
+    };
+  }, [navigation, usuarioId]);
 
   if (usuario === undefined) {
     return (
@@ -38,9 +146,111 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {usuario ? (
-        <Stack.Screen name="Inicio">
-          {() => <InicioScreen client={client} usuario={usuario} />}
-        </Stack.Screen>
+        <Stack.Group navigationKey={usuario.id}>
+          <Stack.Screen name="Abas">
+            {({ navigation }) => (
+              <AbasNavigator
+                usuarioId={usuario.id}
+                nome={nomeUsuario}
+                email={usuario.email}
+                sincronizacao={sincronizacao}
+                sincronizar={sincronizar}
+                abrirPerfil={() => navigation.navigate('Perfil')}
+                novaDisciplina={() => navigation.navigate('NovaDisciplina')}
+                novaAtividade={(data) => navigation.navigate('NovaAtividade', data ? { data } : undefined)}
+                abrirAtividade={(atividadeId) => navigation.navigate('EditarAtividade', { atividadeId })}
+                abrirDisciplina={(disciplinaId) =>
+                  navigation.navigate('DetalhesDisciplina', { disciplinaId })
+                }
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="DetalhesDisciplina">
+            {({ navigation, route }) => (
+              <DetalhesDisciplinaScreen
+                key={route.params.disciplinaId}
+                usuarioId={usuario.id}
+                disciplinaId={route.params.disciplinaId}
+                voltar={() => navigation.goBack()}
+                editarDisciplina={() => navigation.navigate('EditarDisciplina', route.params)}
+                novaAtividade={() => navigation.navigate('NovaAtividade', route.params)}
+                abrirAtividade={(atividadeId) =>
+                  navigation.navigate('EditarAtividade', { atividadeId })
+                }
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="NovaAtividade">
+            {({ navigation, route }) => (
+              <NovaAtividadeScreen
+                usuarioId={usuario.id}
+                disciplinaId={route.params?.disciplinaId}
+                data={route.params?.data}
+                voltar={() => navigation.goBack()}
+                concluir={(disciplinaId) => {
+                  if (!navigation.isFocused()) return;
+                  if (route.params?.disciplinaId) {
+                    navigation.popTo('DetalhesDisciplina', { disciplinaId });
+                  } else {
+                    navigation.goBack();
+                  }
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="EditarAtividade">
+            {({ navigation, route }) => (
+              <EditarAtividadeScreen
+                key={route.params.atividadeId}
+                usuarioId={usuario.id}
+                atividadeId={route.params.atividadeId}
+                voltar={() => navigation.goBack()}
+                concluir={() => {
+                  if (navigation.isFocused()) navigation.goBack();
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Perfil">
+            {({ navigation }) => (
+              <PerfilScreen
+                client={client}
+                usuarioId={usuario.id}
+                nome={nomeUsuario}
+                email={usuario.email}
+                sincronizacao={sincronizacao}
+                sincronizar={sincronizar}
+                voltar={() => navigation.goBack()}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="NovaDisciplina">
+            {({ navigation }) => (
+              <NovaDisciplinaScreen
+                usuarioId={usuario.id}
+                voltar={() => navigation.goBack()}
+                concluir={() => {
+                  if (navigation.isFocused()) navigation.goBack();
+                }}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="EditarDisciplina">
+            {({ navigation, route }) => (
+              <EditarDisciplinaScreen
+                usuarioId={usuario.id}
+                disciplinaId={route.params.disciplinaId}
+                voltar={() => navigation.goBack()}
+                concluir={() => {
+                  if (navigation.isFocused()) navigation.goBack();
+                }}
+                concluirExclusao={() => {
+                  if (navigation.isFocused()) navigation.popTo('Abas');
+                }}
+              />
+            )}
+          </Stack.Screen>
+        </Stack.Group>
       ) : (
         <Stack.Group>
           <Stack.Screen name="Login">

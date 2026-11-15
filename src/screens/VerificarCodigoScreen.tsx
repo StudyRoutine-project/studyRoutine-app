@@ -3,7 +3,7 @@ import { Keyboard, StyleSheet, Text } from 'react-native';
 
 import { BotaoVoltar } from '../components/BotaoVoltar';
 import { MensagemErro } from '../components/MensagemErro';
-import { BotaoConta } from '../components/conta/BotaoConta';
+import { Botao } from '../components/Botao';
 import { CampoConta } from '../components/conta/CampoConta';
 import { ContaLayout } from '../components/conta/ContaLayout';
 import { LinkConta } from '../components/conta/LinkConta';
@@ -128,7 +128,7 @@ export function VerificarCodigoScreen({ client, email, finalidade, voltar, concl
         value={codigo}
       />
       {erro && <MensagemErro mensagem={erro} />}
-      <BotaoConta
+      <Botao
         texto={acao === 'validar' ? 'Validando…' : 'Confirmar código'}
         ocupado={!!acao}
         onPress={confirmar}

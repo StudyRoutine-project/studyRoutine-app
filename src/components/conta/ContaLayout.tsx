@@ -10,10 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cores } from '../../theme/cores';
+import { CabecalhoMarca } from '../CabecalhoMarca';
 
 import type { ReactNode } from 'react';
 
-const logoNome = require('../../../assets/logo-nome.png');
 const ilustracao = require('../../../assets/ilustracao.png');
 
 type Props = {
@@ -33,16 +33,7 @@ export function ContaLayout({ titulo, subtitulo, compacto = false, acaoTopo, chi
       >
         <ScrollView contentContainerStyle={styles.conteudo} keyboardShouldPersistTaps="handled">
           <View style={styles.coluna}>
-            <View style={styles.cabecalho}>
-              {acaoTopo}
-              <Image
-                accessible
-                accessibilityLabel="StudyRoutine"
-                resizeMode="contain"
-                source={logoNome}
-                style={styles.logo}
-              />
-            </View>
+            <CabecalhoMarca acao={acaoTopo} />
             <Image
               accessible={false}
               resizeMode="contain"
@@ -82,18 +73,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: 392,
-  },
-  cabecalho: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 14,
-  },
-  logo: {
-    flexShrink: 1,
-    width: '72%',
-    maxWidth: 264,
-    height: 'auto',
-    aspectRatio: 590 / 106,
   },
   ilustracao: {
     alignSelf: 'center',

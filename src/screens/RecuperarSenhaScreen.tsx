@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Keyboard, TextInput } from 'react-native';
 
 import { MensagemErro } from '../components/MensagemErro';
-import { BotaoConta } from '../components/conta/BotaoConta';
+import { Botao } from '../components/Botao';
 import { CampoConta } from '../components/conta/CampoConta';
 import { ContaLayout } from '../components/conta/ContaLayout';
 import { LinkConta } from '../components/conta/LinkConta';
@@ -114,7 +114,7 @@ export function RecuperarSenhaScreen({ client, concluir, pedirNovoCodigo }: Prop
 
       {erro && <MensagemErro mensagem={erro} />}
 
-      <BotaoConta
+      <Botao
         texto={enviando ? 'Salvando…' : senhaSalva ? 'Ir para login' : 'Salvar senha'}
         ocupado={enviando}
         onPress={enviar}
