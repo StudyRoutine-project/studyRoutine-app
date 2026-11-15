@@ -1,6 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 
-import { abrirBanco } from './banco';
+import { abrirBanco, transacionarBanco } from './banco';
 
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -12,6 +12,32 @@ type OperacaoPendente = {
 };
 
 type OperacaoArmazenada = Omit<OperacaoPendente, 'dados'> & { dados: string };
+
+const observadores = new Set<(usuarioId: string) => void>();
+
+export function observarOperacoesLocais(observar: (usuarioId: string) => void) {
+  observadores.add(observar);
+  return () => {
+    observadores.delete(observar);
+  };
+}
+
+export async function gravarAlteracaoLocal(
+  usuarioId: string,
+  executar: (transacao: SQLiteDatabase) => Promise<void>,
+) {
+  await transacionarBanco(executar);
+  for (const observar of observadores) observar(usuarioId);
+}
+
+export async function contarOperacoesPendentes(usuarioId: string) {
+  const db = await abrirBanco();
+  const resultado = await db.getFirstAsync<{ total: number }>(
+    'SELECT count(*) AS total FROM operacoes_pendentes WHERE usuario_id = ?',
+    usuarioId,
+  );
+  return resultado?.total ?? 0;
+}
 
 export async function registrarOperacaoPendente(
   transacao: SQLiteDatabase,
@@ -42,10 +68,11 @@ export async function listarOperacoesPendentes(usuarioId: string): Promise<Opera
 }
 
 export async function confirmarOperacaoPendente(usuarioId: string, id: string) {
-  const db = await abrirBanco();
-  await db.runAsync(
-    'DELETE FROM operacoes_pendentes WHERE usuario_id = ? AND id = ?',
-    usuarioId,
-    id,
-  );
+  await transacionarBanco(async (transacao) => {
+    await transacao.runAsync(
+      'DELETE FROM operacoes_pendentes WHERE usuario_id = ? AND id = ?',
+      usuarioId,
+      id,
+    );
+  });
 }

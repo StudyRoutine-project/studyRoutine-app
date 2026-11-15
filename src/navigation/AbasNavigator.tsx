@@ -9,6 +9,8 @@ import { DisciplinasScreen } from '../screens/DisciplinasScreen';
 import { InicioScreen } from '../screens/InicioScreen';
 import { cores } from '../theme/cores';
 
+import type { EstadoSincronizacao } from '../hooks/useSincronizacao';
+
 type Rotas = {
   Inicio: undefined;
   Disciplinas: undefined;
@@ -19,6 +21,8 @@ type Props = {
   usuarioId: string;
   nome: string;
   email?: string;
+  sincronizacao?: EstadoSincronizacao;
+  sincronizar: () => void;
   abrirPerfil: () => void;
   novaDisciplina: () => void;
   novaAtividade: (data?: string) => void;
@@ -38,6 +42,8 @@ export function AbasNavigator({
   usuarioId,
   nome,
   email,
+  sincronizacao,
+  sincronizar,
   abrirPerfil,
   novaDisciplina,
   novaAtividade,
@@ -79,6 +85,8 @@ export function AbasNavigator({
           <InicioScreen
             usuarioId={usuarioId}
             nome={nome}
+            sincronizacao={sincronizacao}
+            sincronizar={sincronizar}
             acaoPerfil={acaoPerfil}
             novaDisciplina={novaDisciplina}
             novaAtividade={() => novaAtividade()}
@@ -90,6 +98,8 @@ export function AbasNavigator({
         {() => (
           <DisciplinasScreen
             usuarioId={usuarioId}
+            sincronizacao={sincronizacao}
+            sincronizar={sincronizar}
             acaoPerfil={acaoPerfil}
             novaDisciplina={novaDisciplina}
             abrirDisciplina={abrirDisciplina}
@@ -100,6 +110,8 @@ export function AbasNavigator({
         {() => (
           <AgendaScreen
             usuarioId={usuarioId}
+            sincronizacao={sincronizacao}
+            sincronizar={sincronizar}
             acaoPerfil={acaoPerfil}
             abrirAtividade={abrirAtividade}
             novaAtividade={novaAtividade}

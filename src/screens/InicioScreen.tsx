@@ -1,40 +1,37 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Botao } from '../components/Botao';
 import { BotaoFlutuante } from '../components/BotaoFlutuante';
 import { CabecalhoSecao } from '../components/CabecalhoSecao';
 import { EstadoErro } from '../components/EstadoErro';
+import { EstadoCarregamentoEstudos } from '../components/EstadoCarregamentoEstudos';
+import { EstadoSincronizacao } from '../components/EstadoSincronizacao';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { LayoutInterno } from '../components/LayoutInterno';
 import { ResumoNumeros } from '../components/ResumoNumeros';
 import { ListaAtividades } from '../components/atividades/ListaAtividades';
-import { agruparPorSituacao } from '../utils/situacaoAtividade';
 import { BannerInicio } from '../components/inicio/BannerInicio';
-import { listarAtividades } from '../database/atividades';
-import { listarDisciplinas } from '../database/disciplinas';
 import { marcarConclusao, useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
+import { useDadosEstudos } from '../hooks/useDadosEstudos';
 import { useHorarioAtual } from '../hooks/useHorarioAtual';
-import { observarAtividadesDosLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 import { contar } from '../utils/contar';
 import { formatarPrazoResumido } from '../utils/datas';
+import { agruparPorSituacao } from '../utils/situacaoAtividade';
 
 import type { ReactNode } from 'react';
-import type { Atividade } from '../database/atividades';
-import type { Disciplina } from '../database/disciplinas';
+import type { EstadoSincronizacao as Estado } from '../hooks/useSincronizacao';
 
 type Props = {
   usuarioId: string;
   nome: string;
   acaoPerfil: ReactNode;
+  sincronizacao?: Estado;
+  sincronizar: () => void;
   novaDisciplina: () => void;
   novaAtividade: () => void;
   abrirAtividade: (id: string) => void;
 };
-
-type Dados = { disciplinas: Disciplina[]; atividades: Atividade[] };
 
 const limiteProximas = 5;
 
@@ -48,49 +45,21 @@ export function InicioScreen({
   usuarioId,
   nome,
   acaoPerfil,
+  sincronizacao,
+  sincronizar,
   novaDisciplina,
   novaAtividade,
   abrirAtividade,
 }: Props) {
-  const [dados, setDados] = useState<Dados>();
-  const [erro, setErro] = useState(false);
-  const [tentativa, setTentativa] = useState(0);
+  const { dados, erro, aguardandoSincronizacao, recarregar, atualizarDados } =
+    useDadosEstudos(usuarioId, sincronizacao?.primeiraCargaConcluida);
   const agora = useHorarioAtual();
 
-  useFocusEffect(
-    useCallback(() => {
-      let ativo = true;
-      let versao = 0;
-
-      function carregar() {
-        const leitura = ++versao;
-        setErro(false);
-        void Promise.all([listarDisciplinas(usuarioId), listarAtividades(usuarioId)]).then(
-          ([disciplinas, atividades]) => {
-            if (ativo && leitura === versao) setDados({ disciplinas, atividades });
-          },
-          () => {
-            if (ativo && leitura === versao) setErro(true);
-          },
-        );
-      }
-
-      carregar();
-      const pararObservacao = observarAtividadesDosLembretes((conta) => {
-        if (conta === usuarioId) carregar();
-      });
-
-      return () => {
-        ativo = false;
-        pararObservacao();
-      };
-    }, [usuarioId, tentativa]),
-  );
-
   const conclusao = useConclusaoAtividade(usuarioId, (id, concluida) => {
-    setDados((atual) =>
-      atual ? { ...atual, atividades: marcarConclusao(atual.atividades, id, concluida) } : atual,
-    );
+    atualizarDados((atual) => ({
+      ...atual,
+      atividades: marcarConclusao(atual.atividades, id, concluida),
+    }));
   });
 
   const resumo = useMemo(() => {
@@ -118,6 +87,7 @@ export function InicioScreen({
     [aplicar, dados, agora],
   );
 
+  const temDisciplinas = Boolean(resumo?.disciplinas.size);
   const primeiroNome = nome.trim().split(/\s+/)[0];
   const data = formatoData.format(agora);
 
@@ -127,8 +97,11 @@ export function InicioScreen({
       acaoDireita={acaoPerfil}
       edges={['top', 'left', 'right']}
       flutuante={
-        !!resumo?.disciplinas.size && (
-          <BotaoFlutuante texto="Nova atividade" onPress={novaAtividade} />
+        resumo && !erro && !aguardandoSincronizacao && (
+          <BotaoFlutuante
+            texto={temDisciplinas ? 'Nova atividade' : 'Nova disciplina'}
+            onPress={temDisciplinas ? novaAtividade : novaDisciplina}
+          />
         )
       }
     >
@@ -146,27 +119,31 @@ export function InicioScreen({
           <Text style={styles.data}>{data.charAt(0).toUpperCase() + data.slice(1)}</Text>
         </View>
 
+        <BannerInicio
+          titulo="Organize sua rotina de estudos"
+          descricao="Cadastre suas provas, trabalhos e tarefas em um só lugar."
+        />
+
+        {!aguardandoSincronizacao && <EstadoSincronizacao estado={sincronizacao} compacto />}
+
         {erro ? (
           <EstadoErro
             mensagem="Não foi possível carregar seus estudos."
-            tentarDeNovo={() => setTentativa((n) => n + 1)}
+            tentarDeNovo={recarregar}
           />
-        ) : !resumo ? (
-          <ActivityIndicator accessibilityLabel="Carregando o início" color={cores.roxo} />
+        ) : !resumo || aguardandoSincronizacao ? (
+          <EstadoCarregamentoEstudos
+            fase={aguardandoSincronizacao ? sincronizacao?.fase : undefined}
+            sincronizar={sincronizar}
+          />
         ) : resumo.disciplinas.size === 0 ? (
           <EstadoVazio
             ilustracao="disciplinas"
             titulo="Nenhuma disciplina cadastrada"
             descricao="Cadastre sua primeira disciplina para começar."
-            acao={<Botao texto="Nova disciplina" icone="plus" compacto onPress={novaDisciplina} />}
           />
         ) : (
           <>
-            <BannerInicio
-              titulo="Organize sua rotina de estudos"
-              descricao="Cadastre suas provas, trabalhos e tarefas em um só lugar."
-            />
-
             {resumo.total === 0 ? (
               <EstadoVazio
                 ilustracao="atividades"

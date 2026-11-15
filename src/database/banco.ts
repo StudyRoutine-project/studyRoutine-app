@@ -3,6 +3,7 @@ import { openDatabaseAsync } from 'expo-sqlite';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 let banco: Promise<SQLiteDatabase> | undefined;
+let escritas = Promise.resolve();
 
 export function abrirBanco() {
   banco ??= prepararBanco().catch((erro) => {
@@ -10,6 +11,15 @@ export function abrirBanco() {
     throw erro;
   });
   return banco;
+}
+
+export function transacionarBanco(executar: (transacao: SQLiteDatabase) => Promise<void>) {
+  const escrita = escritas.then(async () => {
+    const db = await abrirBanco();
+    await db.withExclusiveTransactionAsync(executar);
+  });
+  escritas = escrita.catch(() => {});
+  return escrita;
 }
 
 async function prepararBanco() {

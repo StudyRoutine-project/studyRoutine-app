@@ -2,7 +2,7 @@ import { randomUUID } from 'expo-crypto';
 
 import { normalizarTexto } from '../utils/normalizarTexto';
 import { abrirBanco } from './banco';
-import { registrarOperacaoPendente } from './operacoesPendentes';
+import { gravarAlteracaoLocal, registrarOperacaoPendente } from './operacoesPendentes';
 
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -64,9 +64,7 @@ export async function cadastrarDisciplina(usuarioId: string, dados: DadosDiscipl
   const { nome, descricao, cor } = prepararDados(dados);
   const id = randomUUID();
   const agora = new Date().toISOString();
-  const db = await abrirBanco();
-
-  await db.withExclusiveTransactionAsync(async (transacao) => {
+  await gravarAlteracaoLocal(usuarioId, async (transacao) => {
     await validarNomeDisponivel(transacao, usuarioId, nome);
     await transacao.runAsync(
       `INSERT INTO disciplinas (usuario_id, id, nome, descricao, cor, criada_em, atualizada_em)
@@ -109,9 +107,7 @@ export async function buscarDisciplina(usuarioId: string, id: string) {
 
 export async function editarDisciplina(usuarioId: string, id: string, dados: DadosDisciplina) {
   const alteracao = prepararDados(dados);
-  const db = await abrirBanco();
-
-  await db.withExclusiveTransactionAsync(async (transacao) => {
+  await gravarAlteracaoLocal(usuarioId, async (transacao) => {
     await validarNomeDisponivel(transacao, usuarioId, alteracao.nome, id);
     const { changes } = await transacao.runAsync(
       `UPDATE disciplinas SET nome = ?, descricao = ?, cor = ?, atualizada_em = ?
@@ -129,10 +125,9 @@ export async function editarDisciplina(usuarioId: string, id: string, dados: Dad
 }
 
 export async function excluirDisciplina(usuarioId: string, id: string) {
-  const db = await abrirBanco();
   const agora = new Date().toISOString();
 
-  await db.withExclusiveTransactionAsync(async (transacao) => {
+  await gravarAlteracaoLocal(usuarioId, async (transacao) => {
     const dados = await transacao.getFirstAsync<Pick<Disciplina, 'nome' | 'descricao' | 'cor'>>(
       `UPDATE disciplinas SET excluida = 1, atualizada_em = ?
        WHERE usuario_id = ? AND id = ? AND excluida = 0

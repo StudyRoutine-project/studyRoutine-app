@@ -2,7 +2,7 @@ import { randomUUID } from 'expo-crypto';
 
 import { horarioValido } from '../utils/datas';
 import { abrirBanco } from './banco';
-import { registrarOperacaoPendente } from './operacoesPendentes';
+import { gravarAlteracaoLocal, registrarOperacaoPendente } from './operacoesPendentes';
 
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -68,9 +68,7 @@ export async function cadastrarAtividade(usuarioId: string, dados: DadosAtividad
   const { disciplina_id, titulo, tipo, data, horario, descricao } = alteracao;
   const id = randomUUID();
   const agora = new Date().toISOString();
-  const db = await abrirBanco();
-
-  await db.withExclusiveTransactionAsync(async (transacao) => {
+  await gravarAlteracaoLocal(usuarioId, async (transacao) => {
     const { changes } = await transacao.runAsync(
       `INSERT INTO atividades
          (usuario_id, id, disciplina_id, titulo, tipo, data, horario, descricao, criada_em, atualizada_em)
@@ -110,9 +108,7 @@ export async function editarAtividade(
   concluida?: boolean,
 ) {
   const { disciplina_id, titulo, tipo, data, horario, descricao } = prepararDados(dados);
-  const db = await abrirBanco();
-
-  await db.withExclusiveTransactionAsync(async (transacao) => {
+  await gravarAlteracaoLocal(usuarioId, async (transacao) => {
     const disciplina = await transacao.getFirstAsync(
       'SELECT 1 FROM disciplinas WHERE usuario_id = ? AND id = ? AND excluida = 0',
       usuarioId,
@@ -151,10 +147,9 @@ export async function alterarPrazoAtividade(
   anterior: Pick<Atividade, 'id' | 'data' | 'horario'>,
   prazo: Pick<DadosAtividade, 'data' | 'horario'>,
 ) {
-  const db = await abrirBanco();
   let alterada = false;
 
-  await db.withExclusiveTransactionAsync(async (transacao) => {
+  await gravarAlteracaoLocal(usuarioId, async (transacao) => {
     const alteracao = await transacao.getFirstAsync<DadosAtividadeAlterada>(
       `UPDATE atividades
        SET data = ?, horario = ?, adiada = 1, atualizada_em = ?
@@ -183,9 +178,7 @@ export async function alterarPrazoAtividade(
 }
 
 export async function definirConclusaoAtividade(usuarioId: string, id: string, concluida: boolean) {
-  const db = await abrirBanco();
-
-  await db.withExclusiveTransactionAsync(async (transacao) => {
+  await gravarAlteracaoLocal(usuarioId, async (transacao) => {
     const alteracao = await transacao.getFirstAsync<DadosAtividadeAlterada>(
       `UPDATE atividades SET concluida = ?, atualizada_em = ?
        WHERE usuario_id = ? AND id = ? AND excluida = 0
@@ -201,9 +194,7 @@ export async function definirConclusaoAtividade(usuarioId: string, id: string, c
 }
 
 export async function excluirAtividade(usuarioId: string, id: string) {
-  const db = await abrirBanco();
-
-  await db.withExclusiveTransactionAsync(async (transacao) => {
+  await gravarAlteracaoLocal(usuarioId, async (transacao) => {
     const alteracao = await transacao.getFirstAsync<DadosAtividadeAlterada>(
       `UPDATE atividades SET excluida = 1, atualizada_em = ?
        WHERE usuario_id = ? AND id = ? AND excluida = 0
