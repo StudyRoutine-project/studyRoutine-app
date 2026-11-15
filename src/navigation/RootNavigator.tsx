@@ -4,7 +4,9 @@ import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, AppState, Platform, StyleSheet, View } from 'react-native';
 
+import { observarDadosSincronizados } from '../database/dadosSincronizados';
 import { useSessao } from '../hooks/useSessao';
+import { useSincronizacao } from '../hooks/useSincronizacao';
 import { CadastroScreen } from '../screens/CadastroScreen';
 import { DetalhesDisciplinaScreen } from '../screens/DetalhesDisciplinaScreen';
 import { EditarAtividadeScreen } from '../screens/EditarAtividadeScreen';
@@ -54,12 +56,17 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
   const nome = usuario?.user_metadata.nome;
   const nomeUsuario = typeof nome === 'string' ? nome.trim() : '';
   const usuarioId = usuario?.id;
+  const { estado: sincronizacao, sincronizar } = useSincronizacao(client, usuarioId);
 
   useEffect(() => {
     if (!usuarioId) return;
 
     void restaurarLembretes(usuarioId).catch(() => {});
+    const pararObservacao = observarDadosSincronizados(usuarioId, () => {
+      void restaurarLembretes(usuarioId).catch(() => {});
+    });
     return () => {
+      pararObservacao();
       void cancelarLembretes(usuarioId).catch(() => {});
     };
   }, [usuarioId]);
@@ -146,6 +153,8 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
                 usuarioId={usuario.id}
                 nome={nomeUsuario}
                 email={usuario.email}
+                sincronizacao={sincronizacao}
+                sincronizar={sincronizar}
                 abrirPerfil={() => navigation.navigate('Perfil')}
                 novaDisciplina={() => navigation.navigate('NovaDisciplina')}
                 novaAtividade={(data) => navigation.navigate('NovaAtividade', data ? { data } : undefined)}
@@ -209,6 +218,8 @@ export function RootNavigator({ client }: { client: SupabaseClient }) {
                 usuarioId={usuario.id}
                 nome={nomeUsuario}
                 email={usuario.email}
+                sincronizacao={sincronizacao}
+                sincronizar={sincronizar}
                 voltar={() => navigation.goBack()}
               />
             )}

@@ -7,22 +7,34 @@ import { AvatarIniciais } from '../components/AvatarIniciais';
 import { BotaoVoltar } from '../components/BotaoVoltar';
 import { CabecalhoMarca } from '../components/CabecalhoMarca';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { EstadoSincronizacao } from '../components/EstadoSincronizacao';
 import { MensagemErro } from '../components/MensagemErro';
 import { useLembretes } from '../hooks/useLembretes';
 import { cancelarLembretes, restaurarLembretes } from '../services/lembretes';
 import { cores } from '../theme/cores';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { EstadoSincronizacao as Estado } from '../hooks/useSincronizacao';
 
 type Props = {
   client: SupabaseClient;
   usuarioId: string;
   nome: string;
   email?: string;
+  sincronizacao?: Estado;
+  sincronizar: () => void;
   voltar: () => void;
 };
 
-export function PerfilScreen({ client, usuarioId, nome, email, voltar }: Props) {
+export function PerfilScreen({
+  client,
+  usuarioId,
+  nome,
+  email,
+  sincronizacao,
+  sincronizar,
+  voltar,
+}: Props) {
   const lembretes = useLembretes(usuarioId);
   const [erroAjustes, setErroAjustes] = useState(false);
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
@@ -78,6 +90,13 @@ export function PerfilScreen({ client, usuarioId, nome, email, voltar }: Props) 
             <AvatarIniciais nome={nome} email={email} grande />
             <Text style={styles.nome}>{nome || 'Estudante'}</Text>
             {email && <Text style={[styles.descricao, styles.email]}>{email}</Text>}
+          </View>
+
+          <View style={styles.cartao}>
+            <Text accessibilityRole="header" style={styles.subtitulo}>
+              Sincronização
+            </Text>
+            <EstadoSincronizacao estado={sincronizacao} sincronizar={sincronizar} />
           </View>
 
           <View style={styles.cartao}>

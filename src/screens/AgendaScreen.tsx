@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Botao } from '../components/Botao';
 import { BotaoFlutuante } from '../components/BotaoFlutuante';
 import { CabecalhoSecao } from '../components/CabecalhoSecao';
 import { EstadoErro } from '../components/EstadoErro';
+import { EstadoCarregamentoEstudos } from '../components/EstadoCarregamentoEstudos';
 import { EstadoVazio } from '../components/EstadoVazio';
 import { LayoutInterno } from '../components/LayoutInterno';
 import { CalendarioAgenda } from '../components/agenda/CalendarioAgenda';
@@ -22,9 +22,12 @@ import {
 import { dataLocal } from '../utils/datas';
 
 import type { ReactNode } from 'react';
+import type { EstadoSincronizacao } from '../hooks/useSincronizacao';
 
 type Props = {
   usuarioId: string;
+  sincronizacao?: EstadoSincronizacao;
+  sincronizar: () => void;
   acaoPerfil: ReactNode;
   abrirAtividade: (id: string) => void;
   novaAtividade: (dia: string) => void;
@@ -33,6 +36,8 @@ type Props = {
 
 export function AgendaScreen({
   usuarioId,
+  sincronizacao,
+  sincronizar,
   acaoPerfil,
   abrirAtividade,
   novaAtividade,
@@ -42,8 +47,8 @@ export function AgendaScreen({
   const hoje = dataLocal(new Date(agora));
   const [diaEscolhido, setDiaEscolhido] = useState<string>();
   const dia = diaEscolhido ?? hoje;
-  const { dados, erro, recarregar, filtros, alterarFiltros, conclusao } =
-    useDadosAgenda(usuarioId);
+  const { dados, erro, aguardandoSincronizacao, recarregar, filtros, alterarFiltros, conclusao } =
+    useDadosAgenda(usuarioId, sincronizacao?.primeiraCargaConcluida);
 
   const disciplinas = useMemo(
     () => new Map(dados?.disciplinas.map((disciplina) => [disciplina.id, disciplina])),
@@ -88,7 +93,6 @@ export function AgendaScreen({
           ilustracao="disciplinas"
           titulo="Nenhuma disciplina cadastrada"
           descricao="Cadastre uma disciplina para adicionar atividades à agenda."
-          acao={<Botao texto="Nova disciplina" icone="plus" compacto onPress={novaDisciplina} />}
         />
       );
     }
@@ -120,8 +124,11 @@ export function AgendaScreen({
       acaoDireita={acaoPerfil}
       edges={['top', 'left', 'right']}
       flutuante={
-        temDisciplinas && (
-          <BotaoFlutuante texto="Nova atividade" onPress={() => novaAtividade(dia)} />
+        dados && !erro && !aguardandoSincronizacao && (
+          <BotaoFlutuante
+            texto={temDisciplinas ? 'Nova atividade' : 'Nova disciplina'}
+            onPress={temDisciplinas ? () => novaAtividade(dia) : novaDisciplina}
+          />
         )
       }
     >
@@ -144,8 +151,11 @@ export function AgendaScreen({
 
         {erro ? (
           <EstadoErro mensagem="Não foi possível carregar a agenda." tentarDeNovo={recarregar} />
-        ) : !dados || !filtros ? (
-          <ActivityIndicator accessibilityLabel="Carregando a agenda" color={cores.roxo} />
+        ) : !dados || !filtros || aguardandoSincronizacao ? (
+          <EstadoCarregamentoEstudos
+            fase={aguardandoSincronizacao ? sincronizacao?.fase : undefined}
+            sincronizar={sincronizar}
+          />
         ) : (
           <View style={styles.secao}>
             <CabecalhoSecao

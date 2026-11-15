@@ -1,17 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { listarAtividades, tiposAtividade } from '../database/atividades';
-import { listarDisciplinas } from '../database/disciplinas';
-import { observarAtividadesDosLembretes } from '../services/lembretes';
+import { tiposAtividade } from '../database/atividades';
 import { marcarConclusao, useConclusaoAtividade } from './useConclusaoAtividade';
+import { useDadosEstudos } from './useDadosEstudos';
 
 import type { PreferenciasAgenda } from '../components/agenda/FiltrosAgenda';
-import type { Atividade } from '../database/atividades';
-import type { Disciplina } from '../database/disciplinas';
 
-type Dados = { atividades: Atividade[]; disciplinas: Disciplina[] };
 const semFiltros: PreferenciasAgenda = { disciplinaId: null, tipo: null };
 
 function lerFiltros(salvo: string | null): PreferenciasAgenda {
@@ -27,10 +22,9 @@ function lerFiltros(salvo: string | null): PreferenciasAgenda {
   }
 }
 
-export function useDadosAgenda(usuarioId: string) {
-  const [dados, setDados] = useState<Dados>();
-  const [erro, setErro] = useState(false);
-  const [tentativa, setTentativa] = useState(0);
+export function useDadosAgenda(usuarioId: string, primeiraCargaConcluida?: boolean) {
+  const { dados, erro, aguardandoSincronizacao, recarregar, atualizarDados } =
+    useDadosEstudos(usuarioId, primeiraCargaConcluida);
   const [filtros, setFiltros] = useState<PreferenciasAgenda>();
   const chaveFiltros = '@studyroutine/agenda/' + usuarioId;
 
@@ -46,40 +40,11 @@ export function useDadosAgenda(usuarioId: string) {
     };
   }, [chaveFiltros]);
 
-  useFocusEffect(
-    useCallback(() => {
-      let ativo = true;
-      let versao = 0;
-
-      function carregar() {
-        const leitura = ++versao;
-        setErro(false);
-        void Promise.all([listarAtividades(usuarioId), listarDisciplinas(usuarioId)]).then(
-          ([atividades, disciplinas]) => {
-            if (ativo && leitura === versao) setDados({ atividades, disciplinas });
-          },
-          () => {
-            if (ativo && leitura === versao) setErro(true);
-          },
-        );
-      }
-
-      carregar();
-      const pararObservacao = observarAtividadesDosLembretes((conta) => {
-        if (conta === usuarioId) carregar();
-      });
-
-      return () => {
-        ativo = false;
-        pararObservacao();
-      };
-    }, [usuarioId, tentativa]),
-  );
-
   const conclusao = useConclusaoAtividade(usuarioId, (id, concluida) => {
-    setDados((atual) =>
-      atual ? { ...atual, atividades: marcarConclusao(atual.atividades, id, concluida) } : atual,
-    );
+    atualizarDados((atual) => ({
+      ...atual,
+      atividades: marcarConclusao(atual.atividades, id, concluida),
+    }));
   });
 
   function alterarFiltros(valor: PreferenciasAgenda) {
@@ -90,7 +55,8 @@ export function useDadosAgenda(usuarioId: string) {
   return {
     dados,
     erro,
-    recarregar: () => setTentativa((n) => n + 1),
+    aguardandoSincronizacao,
+    recarregar,
     filtros,
     alterarFiltros,
     conclusao,

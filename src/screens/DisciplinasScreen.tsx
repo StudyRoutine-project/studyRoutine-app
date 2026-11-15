@@ -1,67 +1,49 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BotaoFlutuante } from '../components/BotaoFlutuante';
 import { CampoTexto } from '../components/CampoTexto';
 import { EstadoErro } from '../components/EstadoErro';
+import { EstadoCarregamentoEstudos } from '../components/EstadoCarregamentoEstudos';
 import { EstadoVazio } from '../components/EstadoVazio';
-import { situacaoAtividade } from '../utils/situacaoAtividade';
 import { FichaDisciplina } from '../components/disciplinas/FichaDisciplina';
 import { LayoutInterno, TituloTela } from '../components/LayoutInterno';
-import { listarAtividades } from '../database/atividades';
-import { listarDisciplinas } from '../database/disciplinas';
+import { useDadosEstudos } from '../hooks/useDadosEstudos';
 import { useHorarioAtual } from '../hooks/useHorarioAtual';
 import { cores } from '../theme/cores';
 import { normalizarTexto } from '../utils/normalizarTexto';
+import { situacaoAtividade } from '../utils/situacaoAtividade';
 
 import type { ReactNode } from 'react';
 import type { ResumoDisciplina } from '../components/disciplinas/FichaDisciplina';
-import type { Atividade } from '../database/atividades';
-import type { Disciplina } from '../database/disciplinas';
+import type { EstadoSincronizacao } from '../hooks/useSincronizacao';
 
 type Props = {
   usuarioId: string;
+  sincronizacao?: EstadoSincronizacao;
+  sincronizar: () => void;
   acaoPerfil: ReactNode;
   novaDisciplina: () => void;
   abrirDisciplina: (disciplinaId: string) => void;
 };
 
-type EstadoLista = 'carregando' | 'erro' | { disciplinas: Disciplina[]; atividades: Atividade[] };
-
 const resumoVazio: ResumoDisciplina = { atrasadas: 0, pendentes: 0, concluidas: 0 };
 
 export function DisciplinasScreen({
   usuarioId,
+  sincronizacao,
+  sincronizar,
   acaoPerfil,
   novaDisciplina,
   abrirDisciplina,
 }: Props) {
-  const [estado, setEstado] = useState<EstadoLista>('carregando');
-  const [tentativa, setTentativa] = useState(0);
+  const { dados, erro, aguardandoSincronizacao, recarregar } =
+    useDadosEstudos(usuarioId, sincronizacao?.primeiraCargaConcluida);
   const [busca, setBusca] = useState('');
 
-  useFocusEffect(
-    useCallback(() => {
-      let ativa = true;
-      setEstado('carregando');
-      void Promise.all([listarDisciplinas(usuarioId), listarAtividades(usuarioId)]).then(
-        ([disciplinas, atividades]) => {
-          if (ativa) setEstado({ disciplinas, atividades });
-        },
-        () => {
-          if (ativa) setEstado('erro');
-        },
-      );
-      return () => {
-        ativa = false;
-      };
-    }, [tentativa, usuarioId]),
-  );
-
   const agora = useHorarioAtual();
-  const disciplinas = typeof estado === 'object' ? estado.disciplinas : [];
+  const disciplinas = dados?.disciplinas ?? [];
   const termo = normalizarTexto(busca);
   const lista = disciplinas.filter((disciplina) =>
     normalizarTexto(disciplina.nome).includes(termo),
@@ -69,9 +51,9 @@ export function DisciplinasScreen({
 
   const resumos = useMemo(() => {
     const porDisciplina = new Map<string, ResumoDisciplina>();
-    if (typeof estado !== 'object') return porDisciplina;
+    if (!dados) return porDisciplina;
 
-    for (const atividade of estado.atividades) {
+    for (const atividade of dados.atividades) {
       const resumo = { ...(porDisciplina.get(atividade.disciplina_id) ?? resumoVazio) };
       const situacao = situacaoAtividade(atividade, agora);
       if (situacao === 'concluida') resumo.concluidas++;
@@ -80,7 +62,7 @@ export function DisciplinasScreen({
       porDisciplina.set(atividade.disciplina_id, resumo);
     }
     return porDisciplina;
-  }, [estado, agora]);
+  }, [dados, agora]);
 
   function abrirFormulario() {
     setBusca('');
@@ -93,23 +75,24 @@ export function DisciplinasScreen({
       acaoDireita={acaoPerfil}
       edges={['top', 'left', 'right']}
       flutuante={
-        typeof estado === 'object' && (
+        dados && !erro && !aguardandoSincronizacao && (
           <BotaoFlutuante texto="Nova disciplina" onPress={abrirFormulario} />
         )
       }
     >
       <TituloTela titulo="Disciplinas" subtitulo="Organize suas matérias e atividades." />
-      {estado === 'carregando' ? (
-        <View style={styles.centro}>
-          <ActivityIndicator color={cores.roxo} accessibilityLabel="Carregando disciplinas" />
-        </View>
-      ) : estado === 'erro' ? (
+      {erro ? (
         <View style={styles.erro}>
           <EstadoErro
             mensagem="Não foi possível carregar as disciplinas."
-            tentarDeNovo={() => setTentativa(tentativa + 1)}
+            tentarDeNovo={recarregar}
           />
         </View>
+      ) : !dados || aguardandoSincronizacao ? (
+        <EstadoCarregamentoEstudos
+          fase={aguardandoSincronizacao ? sincronizacao?.fase : undefined}
+          sincronizar={sincronizar}
+        />
       ) : (
         <>
           {disciplinas.length > 0 && (
@@ -168,11 +151,6 @@ export function DisciplinasScreen({
 }
 
 const styles = StyleSheet.create({
-  centro: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 16,
-  },
   erro: { paddingTop: 14 },
   conteudo: { flexGrow: 1, paddingTop: 14 },
   lista: { gap: 12 },

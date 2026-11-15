@@ -12,6 +12,7 @@ import { ResumoNumeros } from '../components/ResumoNumeros';
 import { FiltroStatusAtividades } from '../components/atividades/FiltroStatusAtividades';
 import { ListaAtividades } from '../components/atividades/ListaAtividades';
 import { listarAtividadesDisciplina } from '../database/atividades';
+import { observarDadosSincronizados } from '../database/dadosSincronizados';
 import { buscarDisciplina } from '../database/disciplinas';
 import { marcarConclusao, useConclusaoAtividade } from '../hooks/useConclusaoAtividade';
 import { useHorarioAtual } from '../hooks/useHorarioAtual';
@@ -74,18 +75,26 @@ export function DetalhesDisciplinaScreen({
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
+      let versao = 0;
+
+      function carregar() {
+        const leitura = ++versao;
+        void Promise.all([
+          buscarDisciplina(usuarioId, disciplinaId),
+          listarAtividadesDisciplina(usuarioId, disciplinaId),
+        ]).then(
+          ([disciplina, atividades]) => {
+            if (ativo && leitura === versao) setEstado(disciplina ? { disciplina, atividades } : null);
+          },
+          () => {
+            if (ativo && leitura === versao) setEstado('erro');
+          },
+        );
+      }
+
       setEstado('carregando');
-      void Promise.all([
-        buscarDisciplina(usuarioId, disciplinaId),
-        listarAtividadesDisciplina(usuarioId, disciplinaId),
-      ]).then(
-        ([disciplina, atividades]) => {
-          if (ativo) setEstado(disciplina ? { disciplina, atividades } : null);
-        },
-        () => {
-          if (ativo) setEstado('erro');
-        },
-      );
+      carregar();
+      const pararSincronizacao = observarDadosSincronizados(usuarioId, carregar);
       const pararObservacao = observarAtividadesDosLembretes((conta, atividade) => {
         if (conta !== usuarioId || atividade.disciplina_id !== disciplinaId) return;
         setEstado((atual) => {
@@ -105,6 +114,7 @@ export function DetalhesDisciplinaScreen({
       return () => {
         ativo = false;
         pararObservacao();
+        pararSincronizacao();
       };
     }, [usuarioId, disciplinaId, tentativa]),
   );
